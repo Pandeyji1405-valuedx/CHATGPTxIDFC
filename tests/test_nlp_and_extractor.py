@@ -4,6 +4,43 @@ from backend.rag.nlp_engine import nlp_engine
 from backend.ingestion.extractor import document_extractor
 from backend.rag.validator import answer_validator
 
+def test_conversational_greetings_and_slang():
+    # Pure greetings
+    greetings = ["hi", "hello", "hey", "namaste", "good morning", "yo", "wassup", "kya haal hai"]
+    for g in greetings:
+        res = nlp_engine.process_query(g)
+        assert res["is_chitchat"] is True
+        assert res["chitchat_response"] is not None
+
+    # Small talk / How are you
+    res_how = nlp_engine.process_query("how are you")
+    assert res_how["is_chitchat"] is True
+    assert "well" in res_how["chitchat_response"].lower() or "doing" in res_how["chitchat_response"].lower()
+
+    # Identity / Capabilities
+    res_id = nlp_engine.process_query("who are you")
+    assert res_id["is_chitchat"] is True
+    assert "ChatGPT" in res_id["chitchat_response"] or "Banking" in res_id["chitchat_response"]
+
+    # Gratitude
+    res_thx = nlp_engine.process_query("thank you so much")
+    assert res_thx["is_chitchat"] is True
+    assert "welcome" in res_thx["chitchat_response"].lower()
+
+    # Acknowledgment
+    res_ok = nlp_engine.process_query("got it")
+    assert res_ok["is_chitchat"] is True
+
+    # Slang
+    res_bro = nlp_engine.process_query("bro")
+    assert res_bro["is_chitchat"] is True
+
+def test_greeting_prefix_with_actual_query():
+    # Greeting preceding actual banking question
+    res = nlp_engine.process_query("Hi, what is NEFT limit?")
+    assert res["is_chitchat"] is False
+    assert "NEFT" in res["resolved_entities"] or "NEFT" in res["normalized_query"].upper()
+
 def test_hinglish_banking_query_variations():
     queries = [
         ("neft kya hota hai", "NEFT"),

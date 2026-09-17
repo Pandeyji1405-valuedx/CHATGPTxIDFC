@@ -77,7 +77,13 @@ class HybridVectorStore:
             if num in chunk["chunk_text"]:
                 boost += 0.15
 
-        return min(boost, 0.60)
+        # Document / requirement queries matching sections with documents / OVD / CDD
+        doc_query_words = {"DOCUMENTS", "DOCUMENT", "NEEDED", "REQUIRED", "REQUIREMENT", "REQUIREMENTS", "PAPERS", "PAPERWORK", "OVD", "CDD", "PROOF", "ELIGIBILITY"}
+        if any(w in query_upper for w in doc_query_words):
+            if any(w in text for w in ["OFFICIALLY VALID DOCUMENTS", "OVD", "CUSTOMER DUE DILIGENCE", "PASSPORT", "AADHAAR", "VOTER", "ELIGIBLE"]):
+                boost += 0.20
+
+        return min(boost, 0.65)
 
     def search(
         self,

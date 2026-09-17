@@ -86,3 +86,44 @@ def test_original_vs_normalized_query_persisted(client, auth_headers_user1):
     assert user_msg["original_content"] == "What is KYC kya h"
     assert user_msg["normalized_content"] is not None
 
+def test_kyc_followup_what_else_is_needed_for_this(client, auth_headers_user1):
+    # 1. Turn 1: "what is kyc"
+    res1 = client.post("/api/chat", json={"query": "what is kyc"}, headers=auth_headers_user1)
+    assert res1.status_code == 200
+    conv_id = res1.json()["conversation_id"]
+    data1 = res1.json()
+    assert data1["source_type"] == "KNOWLEDGE_BASE"
+    assert "KYC" in data1["resolved_entities"]
+
+    # 2. Turn 2: "what else is needed for this"
+    res2 = client.post("/api/chat", json={
+        "conversation_id": conv_id,
+        "query": "what else is needed for this"
+    }, headers=auth_headers_user1)
+    assert res2.status_code == 200
+    data2 = res2.json()
+
+    # Coreference must resolve 'for this' to 'for KYC'
+    assert "KYC" in data2["normalized_query"].upper()
+    assert "KYC" in data2["resolved_entities"]
+    assert data2["source_type"] in ["KNOWLEDGE_BASE", "DATABASE_AND_KNOWLEDGE_BASE"]
+    # Must NOT return a generic chitchat greeting
+    assert "How can I help you today" not in data2["answer"]
+    # Must provide verified KYC documents / OVD / CDD requirements
+    assert any(term in data2["answer"].upper() for term in ["OVD", "AADHAAR", "PASSPORT", "DOCUMENTS", "DILIGENCE", "V-CIP", "CUSTOMER"])
+
+def test_conversation_db_does_not_match_greeting_substring(client, auth_headers_user1):
+    # 1. User says "Hi"
+    res_hi = client.post("/api/chat", json={"query": "Hi"}, headers=auth_headers_user1)
+    assert res_hi.status_code == 200
+    assert "How can I help you today" in res_hi.json()["answer"]
+
+    # 2. User creates a new chat and asks a query containing 'hi' like "what else is needed for this"
+    res_follow = client.post("/api/chat", json={"query": "what else is needed for KYC"}, headers=auth_headers_user1)
+    assert res_follow.status_code == 200
+    data = res_follow.json()
+    # Must NOT falsely match "Hi" response from conversation memory
+    assert data["source_type"] == "KNOWLEDGE_BASE"
+    assert "How can I help you today" not in data["answer"]
+
+

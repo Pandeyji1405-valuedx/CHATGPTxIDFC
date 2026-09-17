@@ -1,6 +1,6 @@
 /**
  * CHATGPTxIDFC — Frontend Application Logic
- * Production-Quality Banking Conversational AI
+ * Ultra-Premium Real-Life ChatGPT 4o Experience with Two-Layer Banking RAG
  */
 
 const API_BASE = "";
@@ -20,21 +20,53 @@ const state = {
   sttReview: true
 };
 
+// Curated Prompts by Category
+const PROMPTS_BY_CATEGORY = {
+  all: [
+    { title: "RBI KYC & OVD Rules", sub: "Officially valid documents and V-CIP requirements", prompt: "What are the latest RBI KYC requirements and Officially Valid Documents (OVD)?" },
+    { title: "NEFT 24x7 Settlement", sub: "Operating hours, 48 batches, and limit rules", prompt: "What is NEFT and what are its operating hours and transaction limits?" },
+    { title: "Digital Lending 2022", sub: "Cooling-off look-up period & KFS disclosures", prompt: "What are the cooling-off period and KFS rules under RBI Digital Lending Directions 2022?" },
+    { title: "Housing Loan LTV Caps", sub: "Max 90% up to ₹30L, 80% up to ₹75L limits", prompt: "What are the Loan-to-Value (LTV) ratio caps for housing loans under RBI regulations?" }
+  ],
+  rbi: [
+    { title: "KYC Master Direction 2016", sub: "Periodic KYC updates & non-face-to-face onboarding", prompt: "Explain the RBI Master Direction on KYC 2016 periodic update requirements." },
+    { title: "Digital Lending KFS Policy", sub: "Key Fact Statement APR disclosures & recovery agent rules", prompt: "What are the rules regarding Key Fact Statement (KFS) under Digital Lending Guidelines?" },
+    { title: "Customer Protection (Fraud)", sub: "Zero liability for third-party fraud notified in 3 days", prompt: "What is customer liability in unauthorized electronic banking transactions?" },
+    { title: "Fair Practices Code (FPC)", sub: "Loan sanction terms & transparent penal charges", prompt: "What are the key directives in RBI Master Direction on Fair Practices Code?" }
+  ],
+  payments: [
+    { title: "NEFT Operating Timings", sub: "Round the clock 24x7x365 batch settlement process", prompt: "What is NEFT and what are its operating hours and transaction limits?" },
+    { title: "RTGS vs NEFT Rules", sub: "Gross settlement min ₹2,00,000 threshold comparison", prompt: "What is RTGS and how does its minimum limit compare with NEFT?" },
+    { title: "Failed Transaction TAT (T+1)", sub: "Auto-reversal timeline and ₹100/day compensation", prompt: "What is the RBI mandated compensation for failed ATM and electronic transactions?" },
+    { title: "Card-on-File Tokenization", sub: "RBI guidelines on replacing actual card numbers with tokens", prompt: "What are the RBI regulations regarding Card-on-File Tokenization (CoFT)?" }
+  ],
+  lending: [
+    { title: "Housing Loan LTV Ratios", sub: "Prudential limits for individual residential housing loans", prompt: "What are the Loan-to-Value (LTV) ratio caps for housing loans under RBI regulations?" },
+    { title: "IDFC Savings Account", sub: "Monthly interest credit compounding & zero charges", prompt: "What are the key benefits of IDFC FIRST Bank Savings Account monthly interest credit?" },
+    { title: "V-CIP Video KYC Process", sub: "Live video verification, geo-tagging & Aadhaar XML", prompt: "Explain the step-by-step V-CIP process for opening an account digitally." },
+    { title: "Penal Charges Directives", sub: "Reasonable penal charges vs penal interest compounding", prompt: "What are the latest RBI guidelines on Fair Lending Practice regarding penal charges?" }
+  ]
+};
+
 // DOM Elements
 const DOM = {
   sidebar: document.getElementById("sidebar"),
   btnSidebarCollapse: document.getElementById("btn-sidebar-collapse"),
+  btnSidebarExpand: document.getElementById("btn-sidebar-expand"),
   btnMobileSidebar: document.getElementById("btn-mobile-sidebar"),
   btnNewChat: document.getElementById("btn-new-chat"),
   conversationSearch: document.getElementById("conversation-search"),
   conversationList: document.getElementById("conversation-list"),
   messagesStream: document.getElementById("messages-stream"),
   welcomeHero: document.getElementById("welcome-hero"),
-  currentChatTitle: document.getElementById("current-chat-title"),
+  btnModelSelector: document.getElementById("btn-model-selector"),
+  modelDropdownMenu: document.getElementById("model-dropdown-menu"),
+  btnExploreKb: document.getElementById("btn-explore-kb"),
   chatForm: document.getElementById("chat-form"),
   chatTextarea: document.getElementById("chat-textarea"),
   btnSend: document.getElementById("btn-send"),
   btnMic: document.getElementById("btn-mic"),
+  btnAttachFile: document.getElementById("btn-attach-file"),
   speechReviewBar: document.getElementById("speech-review-bar"),
   speechTranscriptInput: document.getElementById("speech-transcript-input"),
   btnConfirmSpeech: document.getElementById("btn-confirm-speech"),
@@ -45,10 +77,10 @@ const DOM = {
   authBtnLabel: document.getElementById("auth-btn-label"),
   userProfileWidget: document.getElementById("btn-open-account-drawer"),
   userDisplayName: document.getElementById("user-display-name"),
-  userDisplayEmail: document.getElementById("user-display-email"),
   userAvatarPlaceholder: document.getElementById("user-avatar-placeholder"),
   adminKbBtnContainer: document.getElementById("admin-kb-btn-container"),
   btnOpenAdminKb: document.getElementById("btn-open-admin-kb"),
+  toastContainer: document.getElementById("toast-container"),
   // Modals
   authModal: document.getElementById("auth-modal"),
   authModalTitle: document.getElementById("auth-modal-title"),
@@ -61,6 +93,8 @@ const DOM = {
   btnGoogleLogin: document.getElementById("btn-google-login"),
   btnAuthToggleMode: document.getElementById("btn-auth-toggle-mode"),
   authTogglePrompt: document.getElementById("auth-toggle-prompt"),
+  btnQuickCustomer: document.getElementById("btn-quick-customer"),
+  btnQuickAdmin: document.getElementById("btn-quick-admin"),
   accountDrawer: document.getElementById("account-drawer"),
   savedAccountsList: document.getElementById("saved-accounts-list"),
   btnAddAccount: document.getElementById("btn-add-account"),
@@ -84,6 +118,16 @@ const DOM = {
   settingAutoTts: document.getElementById("setting-auto-tts"),
   settingTtsRate: document.getElementById("setting-tts-rate")
 };
+
+// ==================== TOAST NOTIFICATIONS ====================
+function showToast(msg) {
+  if (!DOM.toastContainer) return;
+  const toast = document.createElement("div");
+  toast.className = "toast-msg";
+  toast.textContent = msg;
+  DOM.toastContainer.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
 
 // ==================== AUTHENTICATION & MULTI-ACCOUNT ====================
 
@@ -121,9 +165,8 @@ function updateUIForAuth() {
   const account = getActiveAccount();
   if (account) {
     DOM.userDisplayName.textContent = account.name;
-    DOM.userDisplayEmail.textContent = account.email;
-    DOM.authBtnLabel.textContent = "Switch";
-    DOM.userAvatarPlaceholder.innerHTML = `<i class="fa-solid fa-user-check"></i>`;
+    DOM.authBtnLabel.textContent = account.name.split(" ")[0];
+    DOM.userAvatarPlaceholder.innerHTML = `<span>${escapeHtml(account.name.charAt(0).toUpperCase())}</span>`;
     
     // Check admin role
     if (account.role === "admin") {
@@ -133,9 +176,8 @@ function updateUIForAuth() {
     }
   } else {
     DOM.userDisplayName.textContent = "Guest User";
-    DOM.userDisplayEmail.textContent = "guest@idfcbank.com";
-    DOM.authBtnLabel.textContent = "Login";
-    DOM.userAvatarPlaceholder.innerHTML = `<i class="fa-solid fa-user"></i>`;
+    DOM.authBtnLabel.textContent = "Log in";
+    DOM.userAvatarPlaceholder.innerHTML = `<span>G</span>`;
     DOM.adminKbBtnContainer.classList.add("hidden");
   }
   renderSavedAccountsList();
@@ -161,6 +203,7 @@ async function loginUser(email, password) {
       token: data.access_token
     });
     closeAllModals();
+    showToast(`Signed in as ${data.user.name}`);
     await loadConversations();
   } catch (err) {
     alert(err.message);
@@ -187,6 +230,7 @@ async function registerUser(name, email, password) {
       token: data.access_token
     });
     closeAllModals();
+    showToast(`Registered successfully!`);
     await loadConversations();
   } catch (err) {
     alert(err.message);
@@ -221,6 +265,7 @@ async function googleLogin(email = null, name = null) {
       token: data.access_token
     });
     closeAllModals();
+    showToast(`Google authenticated as ${data.user.name}`);
     await loadConversations();
   } catch (err) {
     alert(err.message);
@@ -250,13 +295,14 @@ function switchAccount(index) {
     DOM.messagesStream.innerHTML = "";
     DOM.messagesStream.appendChild(DOM.welcomeHero);
     DOM.welcomeHero.classList.remove("hidden");
-    DOM.currentChatTitle.textContent = "New Conversation";
     closeAllModals();
+    showToast(`Switched account to ${state.accounts[index].name}`);
   }
 }
 
 function logoutCurrentAccount() {
   if (state.accounts.length > 0) {
+    const name = state.accounts[state.activeAccountIndex].name;
     state.accounts.splice(state.activeAccountIndex, 1);
     state.activeAccountIndex = 0;
     state.currentConversationId = null;
@@ -266,8 +312,8 @@ function logoutCurrentAccount() {
     DOM.messagesStream.innerHTML = "";
     DOM.messagesStream.appendChild(DOM.welcomeHero);
     DOM.welcomeHero.classList.remove("hidden");
-    DOM.currentChatTitle.textContent = "New Conversation";
     closeAllModals();
+    showToast(`Logged out ${name}`);
   }
 }
 
@@ -284,8 +330,8 @@ function renderSavedAccountsList() {
     card.className = `account-item-card ${isActive ? "active" : ""}`;
     card.innerHTML = `
       <div class="account-card-left">
-        <div class="avatar-container" style="background-color: ${isActive ? '#9e1b32' : '#30363d'}">
-          <i class="fa-solid fa-user"></i>
+        <div class="user-avatar" style="width:28px;height:28px;font-size:11px;">
+          <span>${escapeHtml(acc.name.charAt(0).toUpperCase())}</span>
         </div>
         <div>
           <strong style="font-size:13px;">${escapeHtml(acc.name)}</strong>
@@ -293,7 +339,7 @@ function renderSavedAccountsList() {
         </div>
       </div>
       <div>
-        ${isActive ? '<span class="badge-active">Active</span>' : '<button class="btn btn-secondary btn-sm">Switch</button>'}
+        ${isActive ? '<span class="badge-active">Active</span>' : '<button class="btn btn-chatgpt-ghost btn-sm">Switch</button>'}
       </div>
     `;
     card.addEventListener("click", () => switchAccount(idx));
@@ -306,7 +352,7 @@ function renderSavedAccountsList() {
 async function loadConversations(searchQuery = null) {
   const account = getActiveAccount();
   if (!account) {
-    DOM.conversationList.innerHTML = `<div class="list-skeleton">Please sign in to view history.</div>`;
+    DOM.conversationList.innerHTML = `<div class="list-skeleton">Sign in to see conversation history.</div>`;
     return;
   }
 
@@ -332,13 +378,13 @@ function renderConversationList(convs) {
     return;
   }
 
-  // Group by Today, Yesterday, Previous 7 Days, Older
+  // Group by Today, Yesterday, Previous 7 Days, Previous 30 Days
   const now = new Date();
   const groups = {
     "Today": [],
     "Yesterday": [],
     "Previous 7 Days": [],
-    "Older": []
+    "Previous 30 Days": []
   };
 
   convs.forEach(c => {
@@ -347,7 +393,7 @@ function renderConversationList(convs) {
     if (diffDays === 0) groups["Today"].push(c);
     else if (diffDays === 1) groups["Yesterday"].push(c);
     else if (diffDays <= 7) groups["Previous 7 Days"].push(c);
-    else groups["Older"].push(c);
+    else groups["Previous 30 Days"].push(c);
   });
 
   Object.keys(groups).forEach(grpTitle => {
@@ -396,7 +442,6 @@ async function selectConversation(id) {
     const res = await fetch(`${API_BASE}/api/conversations/${id}`, { headers: getAuthHeader() });
     if (!res.ok) throw new Error("Failed to load conversation messages");
     const detail = await res.json();
-    DOM.currentChatTitle.textContent = detail.title;
     DOM.messagesStream.innerHTML = "";
     DOM.welcomeHero.classList.add("hidden");
 
@@ -417,7 +462,7 @@ async function selectConversation(id) {
 }
 
 async function renameConversationPrompt(id, oldTitle) {
-  const newTitle = prompt("Rename conversation title:", oldTitle);
+  const newTitle = prompt("Rename chat title:", oldTitle);
   if (newTitle && newTitle.trim() && newTitle !== oldTitle) {
     try {
       const res = await fetch(`${API_BASE}/api/conversations/${id}`, {
@@ -426,7 +471,7 @@ async function renameConversationPrompt(id, oldTitle) {
         body: JSON.stringify({ title: newTitle.trim() })
       });
       if (res.ok) {
-        if (state.currentConversationId === id) DOM.currentChatTitle.textContent = newTitle.trim();
+        showToast("Chat renamed");
         await loadConversations();
       }
     } catch (err) {
@@ -436,19 +481,19 @@ async function renameConversationPrompt(id, oldTitle) {
 }
 
 async function deleteConversationPrompt(id) {
-  if (confirm("Are you sure you want to delete this conversation?")) {
+  if (confirm("Delete this conversation?")) {
     try {
       const res = await fetch(`${API_BASE}/api/conversations/${id}`, {
         method: "DELETE",
         headers: getAuthHeader()
       });
       if (res.ok) {
+        showToast("Chat deleted");
         if (state.currentConversationId === id) {
           state.currentConversationId = null;
           DOM.messagesStream.innerHTML = "";
           DOM.messagesStream.appendChild(DOM.welcomeHero);
           DOM.welcomeHero.classList.remove("hidden");
-          DOM.currentChatTitle.textContent = "New Conversation";
         }
         await loadConversations();
       }
@@ -467,43 +512,54 @@ function renderMessage(role, content, meta = {}) {
   row.className = `message-row ${isUser ? "user-row" : "assistant-row"}`;
 
   const avatarHtml = isUser
-    ? `<div class="message-avatar"><i class="fa-solid fa-user"></i></div>`
-    : `<div class="message-avatar"><i class="fa-solid fa-building-columns"></i></div>`;
+    ? ""
+    : `<div class="message-avatar">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1683a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4947zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1683a.0757.0757 0 0 1-.071 0l-4.8303-2.7866A4.4992 4.4992 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.6667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1635a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+        </svg>
+      </div>`;
 
   let innerContentHtml = "";
 
   if (isUser) {
     innerContentHtml = `<div class="message-content">${escapeHtml(content)}</div>`;
   } else {
-    // Assistant message with Source Badge, Markdown rendering, Citations, OCR Ambiguities, Actions
+    // Assistant message
     const rawAnswer = meta.answer || content;
     const renderedText = marked.parse(rawAnswer);
 
-    // Source Badge class & icon
+    // Source Badge
     let badgeClass = "badge-kb";
     let badgeText = "Knowledge Base";
     let badgeIcon = "fa-book-bookmark";
 
     if (meta.source_type === "DATABASE") {
       badgeClass = "badge-db";
-      badgeText = "Conversation Database";
+      badgeText = "Conversation DB";
       badgeIcon = "fa-database";
     } else if (meta.source_type === "DATABASE_AND_KNOWLEDGE_BASE") {
       badgeClass = "badge-hybrid";
       badgeText = "DB + Knowledge Base";
       badgeIcon = "fa-network-wired";
+    } else if (meta.source_type === "CONVERSATIONAL") {
+      badgeClass = "badge-chat";
+      badgeText = "Conversational";
+      badgeIcon = "fa-comments";
     } else if (meta.source_type === "NO_SUPPORTED_SOURCE") {
       badgeClass = "badge-nosource";
       badgeText = "No Verified Source";
       badgeIcon = "fa-circle-exclamation";
     }
 
-    const badgeHtml = `<div class="source-badge ${badgeClass}"><i class="fa-solid ${badgeIcon}"></i> ${badgeText}</div>`;
+    // Do not show distracting badges for pure conversational greetings
+    const badgeHtml = meta.source_type === "CONVERSATIONAL" 
+      ? "" 
+      : `<div class="source-badge ${badgeClass}"><i class="fa-solid ${badgeIcon}"></i> ${badgeText}</div>`;
 
-    // Normalized Query Tag if available
+    // Normalized Query Tag
     let normTagHtml = "";
     if (meta.normalized_query && meta.normalized_query !== content) {
-      normTagHtml = `<div class="normalized-query-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> Interpreted Query: "${escapeHtml(meta.normalized_query)}"</div>`;
+      normTagHtml = `<div class="normalized-query-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> Interpreted: "${escapeHtml(meta.normalized_query)}"</div>`;
     }
 
     // Citations Accordion
@@ -513,7 +569,7 @@ function renderMessage(role, content, meta = {}) {
         <div class="citation-card">
           <div class="citation-header">
             <span class="citation-title">${escapeHtml(c.document_title)} ${c.notification_number ? `(${escapeHtml(c.notification_number)})` : ''}</span>
-            <span class="citation-page">Page ${c.page_number || 1} • Conf: ${(c.score * 100).toFixed(0)}%</span>
+            <span class="citation-page">Page ${c.page_number || 1} • ${(c.score * 100).toFixed(0)}% match</span>
           </div>
           <div class="citation-snippet">"${escapeHtml(c.snippet)}"</div>
         </div>
@@ -522,7 +578,7 @@ function renderMessage(role, content, meta = {}) {
       citationsHtml = `
         <div class="citations-wrapper">
           <button class="citations-toggle-btn" onclick="this.nextElementSibling.classList.toggle('hidden')">
-            <i class="fa-solid fa-chevron-down"></i> View ${meta.citations.length} Verified Source Citation(s)
+            <i class="fa-solid fa-chevron-down"></i> ${meta.citations.length} verified source citation(s)
           </button>
           <div class="citations-list hidden">
             ${citeCards}
@@ -546,14 +602,20 @@ function renderMessage(role, content, meta = {}) {
       `;
     }
 
-    // Actions Bar (Read Aloud, Copy)
+    // Actions Toolbar (TTS, Copy, Thumbs)
     const actionsHtml = `
       <div class="message-actions">
-        <button class="action-icon-btn btn-read-aloud" title="Read Aloud (TTS)">
-          <i class="fa-solid fa-volume-high"></i> Read
+        <button class="action-icon-btn btn-read-aloud" title="Read aloud">
+          <i class="fa-solid fa-volume-high"></i>
         </button>
-        <button class="action-icon-btn btn-copy-msg" title="Copy Response">
-          <i class="fa-solid fa-copy"></i> Copy
+        <button class="action-icon-btn btn-copy-msg" title="Copy response">
+          <i class="fa-solid fa-copy"></i>
+        </button>
+        <button class="action-icon-btn btn-thumb-up" title="Good response">
+          <i class="fa-regular fa-thumbs-up"></i>
+        </button>
+        <button class="action-icon-btn btn-thumb-down" title="Bad response">
+          <i class="fa-regular fa-thumbs-down"></i>
         </button>
       </div>
     `;
@@ -577,14 +639,15 @@ function renderMessage(role, content, meta = {}) {
     </div>
   `;
 
-  // Attach event handlers for message actions
+  // Attach handlers
   if (!isUser) {
     const copyBtn = row.querySelector(".btn-copy-msg");
     if (copyBtn) {
       copyBtn.addEventListener("click", () => {
         navigator.clipboard.writeText(meta.answer || content);
-        copyBtn.innerHTML = `<i class="fa-solid fa-check"></i> Copied`;
-        setTimeout(() => { copyBtn.innerHTML = `<i class="fa-solid fa-copy"></i> Copy`; }, 2000);
+        copyBtn.innerHTML = `<i class="fa-solid fa-check"></i>`;
+        showToast("Copied to clipboard");
+        setTimeout(() => { copyBtn.innerHTML = `<i class="fa-solid fa-copy"></i>`; }, 2000);
       });
     }
 
@@ -592,6 +655,22 @@ function renderMessage(role, content, meta = {}) {
     if (ttsBtn) {
       ttsBtn.addEventListener("click", () => {
         speakText(meta.answer || content);
+      });
+    }
+
+    const thumbUp = row.querySelector(".btn-thumb-up");
+    if (thumbUp) {
+      thumbUp.addEventListener("click", () => {
+        thumbUp.classList.toggle("active");
+        showToast("Feedback recorded");
+      });
+    }
+
+    const thumbDown = row.querySelector(".btn-thumb-down");
+    if (thumbDown) {
+      thumbDown.addEventListener("click", () => {
+        thumbDown.classList.toggle("active");
+        showToast("Feedback recorded");
       });
     }
   }
@@ -607,7 +686,7 @@ async function sendChatMessage(queryText) {
   // Render User Message in stream
   renderMessage("user", query);
   DOM.chatTextarea.value = "";
-  DOM.chatTextarea.style.height = "auto";
+  DOM.chatTextarea.style.height = "24px";
   DOM.btnSend.disabled = true;
 
   // Render Loading Placeholder
@@ -615,10 +694,14 @@ async function sendChatMessage(queryText) {
   loadingRow.className = "message-row assistant-row";
   loadingRow.id = "assistant-loading-indicator";
   loadingRow.innerHTML = `
-    <div class="message-avatar"><i class="fa-solid fa-building-columns"></i></div>
+    <div class="message-avatar">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1683a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4947zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1683a.0757.0757 0 0 1-.071 0l-4.8303-2.7866A4.4992 4.4992 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.6667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1635a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+      </svg>
+    </div>
     <div class="message-body-wrapper">
       <div class="message-content" style="color:var(--text-muted);font-style:italic;">
-        <i class="fa-solid fa-circle-notch fa-spin"></i> Retrieving verified banking sources & validating answer...
+        <i class="fa-solid fa-circle-notch fa-spin"></i> Searching approved banking directives & grounding answer...
       </div>
     </div>
   `;
@@ -646,7 +729,6 @@ async function sendChatMessage(queryText) {
 
     const data = await res.json();
     state.currentConversationId = data.conversation_id;
-    DOM.currentChatTitle.textContent = data.conversation_title;
 
     renderMessage("assistant", data.answer, {
       normalized_query: data.normalized_query,
@@ -666,11 +748,11 @@ async function sendChatMessage(queryText) {
     const loader = document.getElementById("assistant-loading-indicator");
     if (loader) loader.remove();
 
-    renderMessage("assistant", "Something went wrong while processing the request. Please try again.", {
+    renderMessage("assistant", "Something went wrong while processing your request. Please try again.", {
       source_type: "NO_SUPPORTED_SOURCE"
     });
   } finally {
-    DOM.btnSend.disabled = false;
+    DOM.btnSend.disabled = !DOM.chatTextarea.value.trim();
   }
 }
 
@@ -678,14 +760,42 @@ function scrollChatToBottom() {
   DOM.messagesStream.scrollTop = DOM.messagesStream.scrollHeight;
 }
 
+// ==================== PROMPT CATEGORY FILTERING ====================
+
+function renderPromptCards(categoryKey = "all") {
+  const grid = document.querySelector(".prompt-grid");
+  if (!grid) return;
+  const items = PROMPTS_BY_CATEGORY[categoryKey] || PROMPTS_BY_CATEGORY.all;
+
+  grid.innerHTML = items.map(p => `
+    <div class="prompt-card" data-prompt="${escapeHtml(p.prompt)}">
+      <div class="card-text">
+        <div class="card-title">${escapeHtml(p.title)}</div>
+        <div class="card-sub">${escapeHtml(p.sub)}</div>
+      </div>
+      <div class="card-arrow-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </div>
+    </div>
+  `).join("");
+
+  grid.querySelectorAll(".prompt-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const text = card.dataset.prompt;
+      DOM.chatTextarea.value = text;
+      DOM.btnSend.disabled = false;
+      sendChatMessage(text);
+    });
+  });
+}
+
 // ==================== SPEECH-TO-TEXT & TEXT-TO-SPEECH ====================
 
 function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    console.warn("Speech Recognition API not supported in this browser.");
-    return;
-  }
+  if (!SpeechRecognition) return;
 
   state.speechRecognition = new SpeechRecognition();
   state.speechRecognition.continuous = false;
@@ -717,8 +827,7 @@ function initSpeechRecognition() {
     }
   };
 
-  state.speechRecognition.onerror = (err) => {
-    console.error("Speech recognition error:", err);
+  state.speechRecognition.onerror = () => {
     state.isRecordingSpeech = false;
     DOM.btnMic.classList.remove("recording");
   };
@@ -729,7 +838,7 @@ function toggleSpeechRecognition() {
     initSpeechRecognition();
   }
   if (!state.speechRecognition) {
-    alert("Speech recognition is not supported in your browser.");
+    alert("Speech recognition is not supported in this browser.");
     return;
   }
 
@@ -742,9 +851,8 @@ function toggleSpeechRecognition() {
 
 function speakText(text) {
   if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel(); // stop previous speech
+  window.speechSynthesis.cancel();
 
-  // Strip markdown formatting and citations before speaking
   const clean = text
     .replace(/[#*_`~\[\]\(\)]/g, "")
     .replace(/According to the approved.*?document/i, "")
@@ -781,11 +889,11 @@ function renderAdminDocumentsTable(docs) {
   docs.forEach(d => {
     const tr = document.createElement("tr");
     const ocrBadge = d.is_ocr
-      ? `<span class="badge badge-warning" style="color:var(--accent-amber);"><i class="fa-solid fa-eye"></i> OCR (${(d.ocr_confidence*100).toFixed(0)}%)</span>`
-      : `<span class="badge" style="color:var(--accent-green);"><i class="fa-solid fa-file-lines"></i> Native</span>`;
+      ? `<span class="badge-active" style="background:rgba(227,160,24,0.15);color:var(--badge-amber);"><i class="fa-solid fa-eye"></i> OCR (${(d.ocr_confidence*100).toFixed(0)}%)</span>`
+      : `<span class="badge-active"><i class="fa-solid fa-file-lines"></i> Native</span>`;
 
     const ambInfo = d.ocr_ambiguity_notes
-      ? `<span style="color:var(--accent-amber);font-size:11px;" title="${escapeHtml(d.ocr_ambiguity_notes)}"><i class="fa-solid fa-triangle-exclamation"></i> Ambiguity Flagged</span>`
+      ? `<span style="color:var(--badge-amber);font-size:11px;" title="${escapeHtml(d.ocr_ambiguity_notes)}"><i class="fa-solid fa-triangle-exclamation"></i> Flagged</span>`
       : `<span style="color:var(--text-muted);font-size:11px;">Clean</span>`;
 
     tr.innerHTML = `
@@ -796,7 +904,7 @@ function renderAdminDocumentsTable(docs) {
       <td>${d.chunk_count}</td>
       <td>${ocrBadge}<br>${ambInfo}</td>
       <td>
-        <button class="btn btn-danger btn-sm btn-delete-doc" data-id="${d.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        <button class="btn btn-danger-chatgpt btn-sm btn-delete-doc" data-id="${d.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>
       </td>
     `;
 
@@ -828,7 +936,7 @@ async function uploadDocument() {
       const err = await res.json();
       throw new Error(err.detail || "Upload failed");
     }
-    alert("Document processed, OCR evaluated, and ingested successfully!");
+    showToast("Document ingested & OCR processed successfully!");
     DOM.kbUploadForm.reset();
     DOM.kbUploadForm.classList.add("hidden");
     state.selectedUploadFile = null;
@@ -837,7 +945,7 @@ async function uploadDocument() {
     alert(err.message);
   } finally {
     DOM.btnSubmitUpload.disabled = false;
-    DOM.btnSubmitUpload.innerHTML = `Process & Ingest Document`;
+    DOM.btnSubmitUpload.innerHTML = `Ingest Document`;
   }
 }
 
@@ -849,6 +957,7 @@ async function deleteDocument(docId) {
         headers: getAuthHeader()
       });
       if (res.ok) {
+        showToast("Document deleted");
         await loadAdminDocuments();
       }
     } catch (err) {
@@ -867,7 +976,7 @@ async function triggerReindex() {
     });
     if (res.ok) {
       const data = await res.json();
-      alert(data.message);
+      showToast(data.message);
     }
   } catch (err) {
     alert("Re-indexing failed: " + err);
@@ -881,6 +990,7 @@ async function triggerReindex() {
 
 function closeAllModals() {
   document.querySelectorAll(".modal-overlay").forEach(m => m.classList.add("hidden"));
+  if (DOM.modelDropdownMenu) DOM.modelDropdownMenu.classList.add("hidden");
 }
 
 function escapeHtml(str) {
@@ -891,9 +1001,32 @@ function escapeHtml(str) {
 // ==================== INITIALIZATION & EVENT LISTENERS ====================
 
 function initEventListeners() {
-  // Sidebar Collapse
-  DOM.btnSidebarCollapse.addEventListener("click", () => DOM.sidebar.classList.toggle("collapsed"));
-  DOM.btnMobileSidebar.addEventListener("click", () => DOM.sidebar.classList.toggle("collapsed"));
+  // Sidebar Collapse & Expand
+  DOM.btnSidebarCollapse.addEventListener("click", () => {
+    DOM.sidebar.classList.add("collapsed");
+    DOM.btnSidebarExpand.classList.remove("hidden");
+  });
+
+  DOM.btnSidebarExpand.addEventListener("click", () => {
+    DOM.sidebar.classList.remove("collapsed");
+    DOM.btnSidebarExpand.classList.add("hidden");
+  });
+
+  DOM.btnMobileSidebar.addEventListener("click", () => {
+    DOM.sidebar.classList.toggle("collapsed");
+  });
+
+  // Model Selector Dropdown
+  DOM.btnModelSelector.addEventListener("click", (e) => {
+    e.stopPropagation();
+    DOM.modelDropdownMenu.classList.toggle("hidden");
+  });
+
+  document.addEventListener("click", (e) => {
+    if (DOM.modelDropdownMenu && !DOM.modelDropdownMenu.contains(e.target) && e.target !== DOM.btnModelSelector) {
+      DOM.modelDropdownMenu.classList.add("hidden");
+    }
+  });
 
   // New Chat
   DOM.btnNewChat.addEventListener("click", () => {
@@ -901,9 +1034,29 @@ function initEventListeners() {
     DOM.messagesStream.innerHTML = "";
     DOM.messagesStream.appendChild(DOM.welcomeHero);
     DOM.welcomeHero.classList.remove("hidden");
-    DOM.currentChatTitle.textContent = "New Conversation";
     renderConversationList(state.conversations);
   });
+
+  // Explore KB / Directives shortcut
+  if (DOM.btnExploreKb) {
+    DOM.btnExploreKb.addEventListener("click", () => {
+      DOM.chatTextarea.value = "What official RBI Master Directions and IDFC Bank policies are available in the knowledge base?";
+      DOM.btnSend.disabled = false;
+      sendChatMessage();
+    });
+  }
+
+  // Suggestion Category Filter Tabs
+  document.querySelectorAll(".cat-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".cat-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      renderPromptCards(tab.dataset.cat);
+    });
+  });
+
+  // Initial render of prompt cards
+  renderPromptCards("all");
 
   // Conversation Search
   let searchTimer;
@@ -913,15 +1066,6 @@ function initEventListeners() {
       const q = e.target.value.trim();
       loadConversations(q.length > 0 ? q : null);
     }, 250);
-  });
-
-  // Prompt Cards click
-  document.querySelectorAll(".prompt-card").forEach(card => {
-    card.addEventListener("click", () => {
-      const text = card.dataset.prompt;
-      DOM.chatTextarea.value = text;
-      sendChatMessage(text);
-    });
   });
 
   // Chat Form Submit & Keydown
@@ -937,11 +1081,25 @@ function initEventListeners() {
     }
   });
 
-  // Auto-resize textarea
+  // Auto-resize textarea & enable send button
   DOM.chatTextarea.addEventListener("input", () => {
     DOM.chatTextarea.style.height = "auto";
-    DOM.chatTextarea.style.height = Math.min(DOM.chatTextarea.scrollHeight, 160) + "px";
+    DOM.chatTextarea.style.height = Math.min(DOM.chatTextarea.scrollHeight, 180) + "px";
+    DOM.btnSend.disabled = !DOM.chatTextarea.value.trim();
   });
+
+  // Attach File Button (opens KB modal for Admin)
+  if (DOM.btnAttachFile) {
+    DOM.btnAttachFile.addEventListener("click", () => {
+      const account = getActiveAccount();
+      if (account && account.role === "admin") {
+        DOM.adminKbModal.classList.remove("hidden");
+        loadAdminDocuments();
+      } else {
+        alert("Document ingestion is enabled for Admin accounts. Please sign in with an Admin account or use the Quick Admin Login.");
+      }
+    });
+  }
 
   // Mic Button
   DOM.btnMic.addEventListener("click", toggleSpeechRecognition);
@@ -951,6 +1109,7 @@ function initEventListeners() {
     const text = DOM.speechTranscriptInput.value.trim();
     if (text) {
       DOM.chatTextarea.value = text;
+      DOM.btnSend.disabled = false;
       DOM.speechReviewBar.classList.add("hidden");
       sendChatMessage(text);
     }
@@ -964,7 +1123,10 @@ function initEventListeners() {
   DOM.btnThemeToggle.addEventListener("click", () => {
     document.body.classList.toggle("light-theme");
     const isLight = document.body.classList.contains("light-theme");
-    DOM.btnThemeToggle.innerHTML = isLight ? `<i class="fa-solid fa-moon"></i>` : `<i class="fa-solid fa-sun"></i>`;
+    DOM.btnThemeToggle.innerHTML = isLight 
+      ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`
+      : `<svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+    showToast(isLight ? "Light theme enabled" : "Dark theme enabled");
   });
 
   // Auth Modal & Trigger
@@ -984,13 +1146,24 @@ function initEventListeners() {
   DOM.btnAuthToggleMode.addEventListener("click", () => {
     state.isAuthModeRegister = !state.isAuthModeRegister;
     DOM.authNameGroup.classList.toggle("hidden", !state.isAuthModeRegister);
-    DOM.authModalTitle.innerHTML = state.isAuthModeRegister
-      ? `Create Account on CHATGPT<span class="brand-accent">xIDFC</span>`
-      : `Sign in to CHATGPT<span class="brand-accent">xIDFC</span>`;
-    DOM.btnAuthSubmit.textContent = state.isAuthModeRegister ? "Register" : "Sign In";
+    DOM.authModalTitle.textContent = state.isAuthModeRegister ? "Create your account" : "Welcome back";
+    DOM.btnAuthSubmit.textContent = state.isAuthModeRegister ? "Sign up" : "Continue";
     DOM.authTogglePrompt.textContent = state.isAuthModeRegister ? "Already have an account?" : "Don't have an account?";
-    DOM.btnAuthToggleMode.textContent = state.isAuthModeRegister ? "Sign In" : "Register";
+    DOM.btnAuthToggleMode.textContent = state.isAuthModeRegister ? "Log in" : "Sign up";
   });
+
+  // Demo Login Buttons
+  if (DOM.btnQuickCustomer) {
+    DOM.btnQuickCustomer.addEventListener("click", () => {
+      loginUser("customer@idfcbank.com", "Customer@123");
+    });
+  }
+
+  if (DOM.btnQuickAdmin) {
+    DOM.btnQuickAdmin.addEventListener("click", () => {
+      loginUser("admin@idfcbank.com", "Admin@12345");
+    });
+  }
 
   DOM.authForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1050,8 +1223,14 @@ function initEventListeners() {
 
   // Settings Modal
   DOM.btnOpenSettings.addEventListener("click", () => DOM.settingsModal.classList.remove("hidden"));
-  DOM.settingSttReview.addEventListener("change", (e) => state.sttReview = e.target.checked);
-  DOM.settingAutoTts.addEventListener("change", (e) => state.autoTts = e.target.checked);
+  DOM.settingSttReview.addEventListener("change", (e) => {
+    state.sttReview = e.target.checked;
+    showToast("Voice settings updated");
+  });
+  DOM.settingAutoTts.addEventListener("change", (e) => {
+    state.autoTts = e.target.checked;
+    showToast("Auto Read-Aloud updated");
+  });
   DOM.settingTtsRate.addEventListener("input", (e) => state.ttsRate = parseFloat(e.target.value));
 
   // Modal Close Buttons
@@ -1070,7 +1249,7 @@ function initEventListeners() {
 window.addEventListener("DOMContentLoaded", async () => {
   loadAccountsFromStorage();
   
-  // If no saved accounts, seed a default demo account in client state
+  // Seed demo customer account if storage is empty
   if (state.accounts.length === 0) {
     try {
       const res = await fetch(`${API_BASE}/api/auth/login`, {

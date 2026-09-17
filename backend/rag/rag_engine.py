@@ -28,45 +28,75 @@ class TwoLayerRAGEngine:
         """
         Layer 1: Searches the authenticated user's previous conversations and messages.
         Strictly isolated to user_id.
+        Excludes pure chitchat / greetings and requires meaningful multi-token query match.
         """
-        # Fetch user's previous messages (excluding current conversation's pending query)
+        STOP_WORDS = {
+            "what", "is", "the", "are", "of", "and", "in", "to", "for", "a", "an",
+            "tell", "me", "about", "how", "can", "does", "do", "i", "we", "you",
+            "please", "give", "details", "rules", "guidelines", "kya", "hai", "ka",
+            "explain", "show", "find", "this", "that", "there", "here", "with", "from",
+            "hi", "hello", "hey", "namaste", "thanks", "thank", "ok", "okay", "needed", "required"
+        }
+
+        query_tokens = set(re.findall(r"\b[a-zA-Z0-9_-]{3,}\b", normalized_query.lower())) - STOP_WORDS
+        if not query_tokens:
+            return []
+
         query_filter = db.query(Message).filter(Message.user_id == user_id)
-        if current_conversation_id:
-            # Look at current conversation history first, then others
-            messages = query_filter.order_by(Message.created_at.desc()).limit(30).all()
-        else:
-            messages = query_filter.order_by(Message.created_at.desc()).limit(30).all()
+        messages = query_filter.order_by(Message.created_at.desc()).limit(40).all()
 
         matching_results = []
-        norm_upper = normalized_query.upper()
+        seen_answers = set()
 
         for msg in messages:
             if msg.role == "user":
-                continue # We look at assistant answers or Q&A pairs
-
-            # Check if this message was a previous assistant answer
-            resp = msg.response
-            if not resp:
                 continue
 
-            # Check entity matches or keyword matches
+            resp = msg.response
+            if not resp or not resp.answer:
+                continue
+
+            # Skip messages whose answers are fallback refusals or generic chitchat greetings
+            if FALLBACK_REFUSAL_MESSAGE in resp.answer or "How can I help you today" in resp.answer or "Namaste!" in resp.answer:
+                continue
+
             user_prev_msg = db.query(Message).filter(
                 Message.conversation_id == msg.conversation_id,
                 Message.created_at < msg.created_at,
                 Message.role == "user"
             ).order_by(Message.created_at.desc()).first()
 
-            prev_q = (user_prev_msg.normalized_content or user_prev_msg.original_content) if user_prev_msg else ""
+            if not user_prev_msg:
+                continue
 
-            # Check for direct match on previous question or answer
-            if prev_q and (prev_q.upper() in norm_upper or norm_upper in prev_q.upper()):
+            prev_q = (user_prev_msg.normalized_content or user_prev_msg.original_content or "").strip()
+            
+            # Skip if previous question was pure chitchat or too short
+            if not prev_q or len(prev_q) < 5 or nlp_engine.detect_chitchat(prev_q) is not None:
+                continue
+
+            prev_tokens = set(re.findall(r"\b[a-zA-Z0-9_-]{3,}\b", prev_q.lower())) - STOP_WORDS
+            if not prev_tokens:
+                continue
+
+            common_tokens = query_tokens & prev_tokens
+            
+            # Require significant token overlap (at least 2 matching key tokens and >=50% overlap, or exact phrase match >= 10 chars)
+            is_match = False
+            if len(common_tokens) >= 2 and (len(common_tokens) / len(prev_tokens) >= 0.5 or len(common_tokens) / len(query_tokens) >= 0.5):
+                is_match = True
+            elif len(prev_q) >= 10 and re.search(rf"\b{re.escape(prev_q)}\b", normalized_query, re.IGNORECASE):
+                is_match = True
+
+            if is_match and resp.answer not in seen_answers:
+                seen_answers.add(resp.answer)
                 matching_results.append({
                     "source": "CONVERSATION_DATABASE",
                     "conversation_id": msg.conversation_id,
                     "document_title": f"Previous Conversation: {msg.conversation.title if msg.conversation else 'Chat'}",
                     "answer_content": resp.answer,
                     "original_question": prev_q,
-                    "confidence": 0.95,
+                    "confidence": 0.90,
                     "snippet": f"Q: {prev_q}\nA: {resp.answer[:200]}..."
                 })
 
@@ -74,14 +104,14 @@ class TwoLayerRAGEngine:
 
     def validate_answerability(self, query: str, chunk_text: str) -> bool:
         """
-        Validates whether the retrieved chunk actually contains information answering the query,
-        rather than just matching an acronym or broad term.
+        Validates whether the retrieved chunk actually contains information answering the query.
         """
         stop_words = {
             "what", "is", "the", "are", "of", "and", "in", "to", "for", "a", "an",
             "tell", "me", "about", "how", "can", "does", "do", "i", "we", "you",
             "please", "give", "details", "rules", "guidelines", "kya", "hai", "ka",
-            "explain", "show", "find", "in", "years", "months", "days"
+            "explain", "show", "find", "in", "years", "months", "days",
+            "else", "needed", "required", "this", "that", "more"
         }
         query_words = set(re.findall(r"\w+", query.lower())) - stop_words
         if not query_words:
@@ -89,7 +119,6 @@ class TwoLayerRAGEngine:
 
         chunk_lower = chunk_text.lower()
         
-        # Explicit topic intent checks
         if "retention" in query.lower() or "retain" in query.lower():
             if "retention" not in chunk_lower and "retain" not in chunk_lower and "preserve" not in chunk_lower:
                 return False
@@ -98,7 +127,6 @@ class TwoLayerRAGEngine:
             if "cooling-off" not in chunk_lower and "look-up" not in chunk_lower:
                 return False
 
-        # General check: at least 1 non-stopword query term must match
         matched_words = {w for w in query_words if w in chunk_lower}
         if len(query_words) >= 2 and len(matched_words) < 1:
             return False
@@ -115,11 +143,9 @@ class TwoLayerRAGEngine:
         doc_a = kb_chunks[0]
         doc_b = kb_chunks[1]
 
-        # Different documents with both high relevance
         if doc_a.get("document_id") != doc_b.get("document_id") and doc_a.get("score", 0) >= 0.35 and doc_b.get("score", 0) >= 0.35:
             text_a = doc_a.get("chunk_text", "").strip()
             text_b = doc_b.get("chunk_text", "").strip()
-            # If documents have contrasting notification numbers or explicit conflict markers
             notif_a = doc_a.get("notification_number") or doc_a.get("doc_title")
             notif_b = doc_b.get("notification_number") or doc_b.get("doc_title")
             if notif_a != notif_b and ("conflict" in text_a.lower() or "conflict" in text_b.lower() or "contradict" in text_a.lower() or "supersedes" in text_a.lower()):
@@ -142,12 +168,10 @@ class TwoLayerRAGEngine:
     ) -> str:
         """
         Generates a factual answer strictly grounded in the retrieved approved text.
-        Preserves numbers, dates, circular codes, and monetary limits exactly as in source.
         """
         if not kb_chunks and not conv_memory:
             return FALLBACK_REFUSAL_MESSAGE
 
-        # Check for conflicting sources in retrieved chunks
         conflict_msg = self.check_conflicting_chunks(kb_chunks)
         if conflict_msg:
             return conflict_msg
@@ -159,24 +183,10 @@ class TwoLayerRAGEngine:
             notif = primary_chunk.get("notification_number")
             notif_prefix = f" (Notification: {notif})" if notif else ""
 
-            # Check answerability of primary chunk
             if not self.validate_answerability(query, chunk_text):
                 return FALLBACK_REFUSAL_MESSAGE
 
-            # Extract the most relevant sentences answering the query
-            sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
-            query_words = set(re.findall(r"\w+", query.lower())) - {"what", "is", "the", "are", "of", "and", "in", "to", "for", "a", "an", "kya", "hai", "ka"}
-
-            relevant_sentences = []
-            for s in sentences:
-                s_words = set(re.findall(r"\w+", s.lower()))
-                if query_words & s_words or len(sentences) <= 3:
-                    relevant_sentences.append(s.strip())
-
-            body = " ".join(relevant_sentences) if relevant_sentences else chunk_text
-
-            # Clean formatting
-            formatted_answer = f"According to the approved {primary_chunk.get('source', 'RBI')} document **{doc_title}**{notif_prefix}:\n\n{body}"
+            formatted_answer = f"According to the approved {primary_chunk.get('source', 'RBI')} document **{doc_title}**{notif_prefix}:\n\n{chunk_text}"
             return formatted_answer
 
         if conv_memory:
@@ -192,12 +202,12 @@ class TwoLayerRAGEngine:
         raw_query: str
     ) -> Dict[str, Any]:
         """
-        Full 2-Layer RAG Pipeline:
-        1. NLP query normalization + entity extraction + pronoun resolution.
-        2. Layer 1: Conversation DB RAG retrieval.
-        3. Layer 2: Banking KB RAG hybrid retrieval.
-        4. Grounding & Anti-hallucination validation.
-        5. Source attribution & OCR character ambiguity flags.
+        Full Conversational & 2-Layer RAG Pipeline:
+        1. Checks for natural conversational greetings / slangs / pleasantries.
+        2. Normalizes Hinglish + entity extraction + pronoun resolution.
+        3. Layer 1: Conversation DB RAG.
+        4. Layer 2: Banking KB RAG.
+        5. Grounding & Fact Validation.
         """
         # Fetch recent conversation context for pronoun resolution
         history_msgs = []
@@ -214,8 +224,23 @@ class TwoLayerRAGEngine:
                     "normalized_content": m.normalized_content or m.original_content
                 })
 
-        # Step 1: NLP Preprocessing & Coreference
+        # Step 1: NLP Preprocessing, Conversational Chitchat & Coreference
         nlp_res = nlp_engine.process_query(raw_query, conversation_history=history_msgs)
+
+        # Handle Conversational Chitchat (Greetings, Slang, Thanks, Identity)
+        if nlp_res.get("is_chitchat") and nlp_res.get("chitchat_response"):
+            return {
+                "original_query": raw_query,
+                "normalized_query": raw_query,
+                "resolved_entities": [],
+                "answer": nlp_res["chitchat_response"],
+                "source_type": "CONVERSATIONAL",
+                "confidence": 1.0,
+                "citations": [],
+                "ambiguity_flags": [],
+                "clarification_needed": False
+            }
+
         normalized_query = nlp_res["normalized_query"]
         resolved_entities = nlp_res["resolved_entities"]
         extracted_entities = nlp_res["extracted_entities"]
@@ -284,7 +309,6 @@ class TwoLayerRAGEngine:
                 "score": chunk.get("score", 1.0)
             })
 
-            # Check for OCR character ambiguities in the retrieved text
             detected_ambs = ocr_engine.detect_character_ambiguities(chunk.get("chunk_text", ""))
             all_ambiguity_flags.extend(detected_ambs)
 
@@ -300,7 +324,6 @@ class TwoLayerRAGEngine:
                 "score": cm.get("confidence", 0.95)
             })
 
-        # Deduplicate ambiguity flags
         unique_ambiguities = []
         seen_amb = set()
         for flag in all_ambiguity_flags:

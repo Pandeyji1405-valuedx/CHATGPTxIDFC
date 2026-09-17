@@ -3,16 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CHATGPTxIDFC — Banking RAG Conversational AI</title>
-  <meta name="description" content="Production-Quality Banking Conversational AI with Strict Source-Controlled Knowledge, Two-Layer RAG, Multi-Account Switching, and OCR Ambiguity Verification.">
-  <!-- Fonts -->
+  <title>ChatGPT — IDFC FIRST Banking Intelligence</title>
+  <meta name="description" content="Production-Quality Banking Conversational AI with Two-Layer RAG, Strict Grounding, and Real-Life ChatGPT Experience.">
+  
+  <!-- Fonts: Inter (OpenAI Söhne alternative) & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <!-- Icons -->
+  
+  <!-- Font Awesome 6 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
   <!-- Markdown parser -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
   <!-- Stylesheet -->
   <link rel="stylesheet" href="/static/style.css">
 </head>
@@ -21,219 +25,367 @@
     
     <!-- LEFT SIDEBAR -->
     <aside id="sidebar" class="sidebar">
-      <div class="sidebar-header">
-        <div class="brand-badge">
-          <div class="brand-icon"><i class="fa-solid fa-building-columns"></i></div>
-          <div class="brand-text">
-            <span class="brand-title">CHATGPT<span class="brand-accent">xIDFC</span></span>
-            <span class="brand-subtitle">Banking RAG Intelligence</span>
+      
+      <!-- Top Action Controls -->
+      <div class="sidebar-top">
+        <button id="btn-sidebar-collapse" class="sidebar-icon-btn" title="Close sidebar (Ctrl+[)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+            <line x1="9" x2="9" y1="3" y2="21"/>
+          </svg>
+        </button>
+
+        <button id="btn-new-chat" class="new-chat-btn" title="New chat">
+          <div class="new-chat-content">
+            <div class="chatgpt-avatar-mini">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1683a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4947zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1683a.0757.0757 0 0 1-.071 0l-4.8303-2.7866A4.4992 4.4992 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.6667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1635a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+              </svg>
+            </div>
+            <span>New chat</span>
           </div>
-        </div>
-        <button id="btn-sidebar-collapse" class="icon-btn" title="Toggle Sidebar">
-          <i class="fa-solid fa-bars-staggered"></i>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
         </button>
       </div>
 
-      <div class="sidebar-actions">
-        <button id="btn-new-chat" class="btn btn-primary btn-new-chat">
-          <i class="fa-solid fa-plus"></i> New Chat
-        </button>
-        <div class="search-box">
-          <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" id="conversation-search" placeholder="Search conversations..." autocomplete="off">
+      <!-- Search Bar -->
+      <div class="sidebar-search-container">
+        <div class="search-input-pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input type="text" id="conversation-search" placeholder="Search chats..." autocomplete="off">
         </div>
       </div>
 
-      <!-- CONVERSATION LIST (Grouped by Today, Yesterday, Previous 7 Days) -->
+      <!-- GPTs / Directives Shortcut -->
+      <div class="sidebar-shortcuts">
+        <button id="btn-explore-kb" class="sidebar-nav-item">
+          <div class="nav-item-icon"><i class="fa-solid fa-book-bookmark"></i></div>
+          <span>RBI & Bank Directives</span>
+        </button>
+      </div>
+
+      <!-- CONVERSATION LIST (Grouped by Today, Yesterday, Previous 7 Days, Previous 30 Days) -->
       <div id="conversation-list" class="conversation-list">
-        <div class="list-skeleton">Loading conversations...</div>
+        <div class="list-skeleton">Loading chats...</div>
       </div>
 
-      <!-- SIDEBAR FOOTER & USER PROFILE / ACCOUNT SWITCHER -->
+      <!-- SIDEBAR FOOTER & USER PROFILE -->
       <div class="sidebar-footer">
+        
+        <!-- Admin Knowledge Base Trigger -->
         <div id="admin-kb-btn-container" class="admin-only-action hidden">
-          <button id="btn-open-admin-kb" class="btn btn-admin">
-            <i class="fa-solid fa-shield-halved"></i> Knowledge Base Admin
+          <button id="btn-open-admin-kb" class="sidebar-nav-item admin-highlight">
+            <div class="nav-item-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <span>Admin Knowledge Base</span>
           </button>
         </div>
 
-        <div id="user-profile-widget" class="user-profile-widget">
-          <div class="profile-info-block" id="btn-open-account-drawer" title="Switch Account / Profile">
-            <div class="avatar-container" id="user-avatar-placeholder">
-              <i class="fa-solid fa-user-tie"></i>
-            </div>
-            <div class="user-details">
-              <span id="user-display-name" class="user-name">Guest User</span>
-              <span id="user-display-email" class="user-email">guest@idfcbank.com</span>
-            </div>
-            <i class="fa-solid fa-ellipsis-vertical profile-menu-icon"></i>
+        <!-- User Profile Pill -->
+        <div class="user-profile-pill" id="btn-open-account-drawer" title="Account & Preferences">
+          <div class="user-avatar" id="user-avatar-placeholder">
+            <span>U</span>
           </div>
+          <div class="user-info">
+            <span id="user-display-name" class="user-display-name">Customer User</span>
+            <span class="user-plan-tag">IDFC Banking Plus</span>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="profile-dots">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="19" cy="12" r="1"/>
+            <circle cx="5" cy="12" r="1"/>
+          </svg>
         </div>
       </div>
     </aside>
 
-    <!-- MAIN CHAT AREA -->
+    <!-- MAIN CHAT CANVAS -->
     <main class="main-chat-container">
-      <!-- HEADER -->
-      <header class="chat-header">
-        <div class="header-left">
-          <button id="btn-mobile-sidebar" class="icon-btn mobile-only" title="Open Menu">
-            <i class="fa-solid fa-bars"></i>
+      
+      <!-- TOP NAVIGATION BAR -->
+      <header class="top-nav-bar">
+        <div class="top-nav-left">
+          <!-- Sidebar Toggle (When collapsed) -->
+          <button id="btn-sidebar-expand" class="sidebar-icon-btn hidden" title="Open sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+              <line x1="9" x2="9" y1="3" y2="21"/>
+            </svg>
           </button>
-          <div class="header-title-container">
-            <h1 id="current-chat-title" class="chat-title">New Conversation</h1>
-            <span class="policy-pill" title="Strict Zero-Internet Answering Active">
-              <i class="fa-solid fa-lock"></i> Zero-Internet Mode: Verified Knowledge Only
-            </span>
+          
+          <button id="btn-mobile-sidebar" class="sidebar-icon-btn mobile-only" title="Open menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" x2="20" y1="12" y2="12"/>
+              <line x1="4" x2="20" y1="6" y2="6"/>
+              <line x1="4" x2="20" y1="18" y2="18"/>
+            </svg>
+          </button>
+
+          <!-- Model Selector Dropdown (ChatGPT 4o Style) -->
+          <div class="model-selector-dropdown">
+            <button id="btn-model-selector" class="model-selector-btn">
+              <span class="model-title">ChatGPT <span class="model-badge-version">4o</span></span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+            <div id="model-dropdown-menu" class="model-dropdown-menu hidden">
+              <div class="model-option active">
+                <div class="model-opt-icon">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1683a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4947zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1683a.0757.0757 0 0 1-.071 0l-4.8303-2.7866A4.4992 4.4992 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.6667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1635a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+                  </svg>
+                </div>
+                <div class="model-opt-details">
+                  <strong>ChatGPT 4o — IDFC Banking RAG</strong>
+                  <span>Two-Layer RAG with verified RBI Master Directions & policies</span>
+                </div>
+                <i class="fa-solid fa-check check-icon"></i>
+              </div>
+              <div class="model-option">
+                <div class="model-opt-icon"><i class="fa-solid fa-lock"></i></div>
+                <div class="model-opt-details">
+                  <strong>Strict Airgap Zero-Internet Mode</strong>
+                  <span>100% locally grounded; zero external web access</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="header-actions">
-          <button id="btn-theme-toggle" class="icon-btn" title="Toggle Theme">
-            <i class="fa-solid fa-sun"></i>
+
+        <div class="top-nav-right">
+          <!-- Airgap Verified Pill -->
+          <div class="airgap-badge" title="Grounded strictly in approved regulatory knowledge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <span>Verified Knowledge</span>
+          </div>
+
+          <!-- Theme Toggle (Sun/Moon) -->
+          <button id="btn-theme-toggle" class="nav-icon-btn" title="Toggle theme">
+            <svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
           </button>
-          <button id="btn-open-settings" class="icon-btn" title="Settings">
-            <i class="fa-solid fa-gear"></i>
+
+          <!-- Settings Button -->
+          <button id="btn-open-settings" class="nav-icon-btn" title="Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
           </button>
-          <button id="btn-auth-trigger" class="btn btn-secondary btn-sm">
-            <i class="fa-solid fa-right-to-bracket"></i> <span id="auth-btn-label">Login</span>
+
+          <!-- Auth Login / Account Switch Button -->
+          <button id="btn-auth-trigger" class="auth-pill-btn">
+            <span id="auth-btn-label">Log in</span>
           </button>
         </div>
       </header>
 
-      <!-- MESSAGES FEED -->
+      <!-- MESSAGES FEED / CONVERSATION SCROLL AREA -->
       <div id="messages-stream" class="messages-stream">
-        <!-- Welcome Hero when empty -->
+        
+        <!-- Welcome Hero View (Real ChatGPT Center Screen) -->
         <div id="welcome-hero" class="welcome-hero">
-          <div class="hero-icon-large">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <h2>Welcome to CHATGPT<span class="brand-accent">xIDFC</span></h2>
-          <p class="hero-desc">
-            Your authoritative banking conversational intelligence grounded exclusively in 
-            <strong>official RBI Master Directions, Banking Regulations, and IDFC FIRST Bank policies</strong>.
-          </p>
           
+          <div class="chatgpt-center-badge">
+            <div class="chatgpt-logo-circle">
+              <svg viewBox="0 0 24 24" width="38" height="38" fill="currentColor">
+                <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1683a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4947zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1683a.0757.0757 0 0 1-.071 0l-4.8303-2.7866A4.4992 4.4992 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.6667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1635a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+              </svg>
+            </div>
+          </div>
+
+          <h2 class="hero-prompt-heading">What can I help with today?</h2>
+
+          <!-- Suggestion Category Filter Tabs -->
+          <div class="prompt-category-tabs">
+            <button class="cat-tab active" data-cat="all">⚡ Popular Queries</button>
+            <button class="cat-tab" data-cat="rbi">📜 RBI Directives</button>
+            <button class="cat-tab" data-cat="payments">💳 NEFT & Payments</button>
+            <button class="cat-tab" data-cat="lending">🏠 Lending & KYC</button>
+          </div>
+          
+          <!-- Suggestion Cards Grid (ChatGPT pill cards) -->
           <div class="prompt-grid">
+            
             <div class="prompt-card" data-prompt="What are the latest RBI KYC requirements and Officially Valid Documents (OVD)?">
-              <div class="card-icon"><i class="fa-solid fa-id-card"></i></div>
               <div class="card-text">
-                <strong>RBI KYC & OVD Rules</strong>
-                <span>Officially valid documents and V-CIP requirements</span>
+                <div class="card-title">RBI KYC & OVD Rules</div>
+                <div class="card-sub">Officially valid documents and V-CIP requirements</div>
+              </div>
+              <div class="card-arrow-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </div>
 
             <div class="prompt-card" data-prompt="What is NEFT and what are its operating hours and transaction limits?">
-              <div class="card-icon"><i class="fa-solid fa-money-bill-transfer"></i></div>
               <div class="card-text">
-                <strong>NEFT 24x7 Settlement</strong>
-                <span>Operating hours, 48 batches, and limit rules</span>
+                <div class="card-title">NEFT 24x7 Settlement</div>
+                <div class="card-sub">Operating hours, 48 batches, and limit rules</div>
+              </div>
+              <div class="card-arrow-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </div>
 
             <div class="prompt-card" data-prompt="What are the cooling-off period and KFS rules under RBI Digital Lending Directions 2022?">
-              <div class="card-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
               <div class="card-text">
-                <strong>Digital Lending 2022</strong>
-                <span>Cooling-off look-up period & KFS disclosures</span>
+                <div class="card-title">Digital Lending 2022</div>
+                <div class="card-sub">Cooling-off look-up period & KFS disclosures</div>
+              </div>
+              <div class="card-arrow-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </div>
 
             <div class="prompt-card" data-prompt="What are the Loan-to-Value (LTV) ratio caps for housing loans under RBI regulations?">
-              <div class="card-icon"><i class="fa-solid fa-house-chimney"></i></div>
               <div class="card-text">
-                <strong>Housing Loan LTV Caps</strong>
-                <span>Max 90% up to ₹30L, 80% up to ₹75L limits</span>
+                <div class="card-title">Housing Loan LTV Caps</div>
+                <div class="card-sub">Max 90% up to ₹30L, 80% up to ₹75L limits</div>
+              </div>
+              <div class="card-arrow-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
               </div>
             </div>
 
-            <div class="prompt-card" data-prompt="What is customer liability in unauthorized electronic banking transactions?">
-              <div class="card-icon"><i class="fa-solid fa-user-shield"></i></div>
-              <div class="card-text">
-                <strong>Limiting Fraud Liability</strong>
-                <span>Zero liability (3 days) vs limited liability rules</span>
-              </div>
-            </div>
-
-            <div class="prompt-card" data-prompt="What are the key benefits of IDFC FIRST Bank Savings Account monthly interest credit?">
-              <div class="card-icon"><i class="fa-solid fa-piggy-bank"></i></div>
-              <div class="card-text">
-                <strong>IDFC FIRST Bank Savings</strong>
-                <span>Monthly compounding interest & zero-fee banking</span>
-              </div>
-            </div>
           </div>
+
         </div>
+
       </div>
 
       <!-- SPEECH TRANSCRIPT REVIEW BAR -->
       <div id="speech-review-bar" class="speech-review-bar hidden">
         <div class="speech-recording-indicator">
           <span class="pulsing-dot"></span>
-          <span id="speech-status-text">Listening to your voice...</span>
+          <span id="speech-status-text">Listening...</span>
         </div>
         <div class="speech-transcript-box">
-          <input type="text" id="speech-transcript-input" placeholder="Transcript will appear here for review and editing...">
+          <input type="text" id="speech-transcript-input" placeholder="Voice transcript appears here for review...">
         </div>
         <div class="speech-actions">
-          <button id="btn-confirm-speech" class="btn btn-primary btn-sm"><i class="fa-solid fa-check"></i> Use Text</button>
-          <button id="btn-cancel-speech" class="btn btn-ghost btn-sm"><i class="fa-solid fa-xmark"></i> Cancel</button>
+          <button id="btn-confirm-speech" class="btn btn-chatgpt-primary btn-sm">Use</button>
+          <button id="btn-cancel-speech" class="btn btn-chatgpt-ghost btn-sm">Cancel</button>
         </div>
       </div>
 
-      <!-- CHAT INPUT COMPONENT -->
-      <div class="chat-input-area">
-        <form id="chat-form" class="chat-form">
-          <div class="input-wrapper">
+      <!-- FLOATING CHAT INPUT COMPOSER (EXACT CHATGPT PILL) -->
+      <div class="chat-input-container">
+        <form id="chat-form" class="chatgpt-input-box">
+          
+          <!-- Textarea wrapper -->
+          <div class="input-content-row">
             <textarea 
               id="chat-textarea" 
-              placeholder="Ask about RBI master directions, KYC, NEFT, Digital Lending, or IDFC bank policies..." 
+              placeholder="Message ChatGPT..." 
               rows="1"
               autocomplete="off"
             ></textarea>
+          </div>
+
+          <!-- Composer Bottom Tools Row -->
+          <div class="composer-tools-row">
             
-            <div class="input-controls">
-              <button type="button" id="btn-mic" class="mic-btn" title="Voice Input (Speech-to-Text)">
-                <i class="fa-solid fa-microphone"></i>
+            <div class="composer-left-tools">
+              <!-- Attach Document Button -->
+              <button type="button" id="btn-attach-file" class="composer-icon-btn" title="Attach banking document (Admin)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
               </button>
-              <button type="submit" id="btn-send" class="send-btn" title="Send Message">
-                <i class="fa-solid fa-arrow-up"></i>
+
+              <!-- Voice Input Mic Button -->
+              <button type="button" id="btn-mic" class="composer-icon-btn" title="Voice Input">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
               </button>
             </div>
+
+            <div class="composer-right-tools">
+              <!-- Send Button (Circle with Up Arrow) -->
+              <button type="submit" id="btn-send" class="send-circle-btn" title="Send message" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+              </button>
+            </div>
+
           </div>
+
         </form>
-        <div class="chat-disclaimer">
-          <i class="fa-solid fa-circle-check"></i> Strict Grounding Policy: Responses are verified strictly against approved RBI & IDFC banking knowledge bases.
+
+        <div class="chat-footer-disclaimer">
+          ChatGPT can make mistakes. Verify important financial and regulatory info.
         </div>
       </div>
+
     </main>
 
   </div>
 
-  <!-- AUTHENTICATION MODAL -->
+  <!-- AUTHENTICATION MODAL (EXACT CHATGPT AUTH PAGE AESTHETIC) -->
   <div id="auth-modal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button class="modal-close-btn" data-close="auth-modal"><i class="fa-solid fa-xmark"></i></button>
+    <div class="modal-card chatgpt-modal auth-dialog">
+      <button class="modal-close-btn" data-close="auth-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
       
       <div class="modal-header">
-        <div class="brand-icon-modal"><i class="fa-solid fa-building-columns"></i></div>
-        <h3 id="auth-modal-title">Sign in to CHATGPT<span class="brand-accent">xIDFC</span></h3>
-        <p class="modal-subtitle">Access your isolated banking conversation history & verified intelligence</p>
+        <div class="chatgpt-logo-modal">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
+            <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1683a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4947zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1683a.0757.0757 0 0 1-.071 0l-4.8303-2.7866A4.4992 4.4992 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.6667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1635a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+          </svg>
+        </div>
+        <h3 id="auth-modal-title">Welcome back</h3>
+        <p class="modal-subtitle">Log in to ChatGPT IDFC Banking Assistant</p>
       </div>
 
-      <!-- Google Sign In Button -->
+      <!-- Quick Demo Login Presets (Fast 1-Click Access) -->
+      <div class="demo-auth-presets">
+        <button id="btn-quick-customer" class="btn-demo-pill" title="1-Click Login as Customer">
+          <i class="fa-solid fa-user"></i> Quick Customer Login
+        </button>
+        <button id="btn-quick-admin" class="btn-demo-pill" title="1-Click Login as Admin">
+          <i class="fa-solid fa-shield-halved"></i> Quick Admin Login
+        </button>
+      </div>
+
+      <!-- SSO OAuth Section -->
       <div class="oauth-section">
-        <button id="btn-google-login" class="btn btn-google">
+        <button id="btn-google-login" class="btn-oauth">
           <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
           </svg>
-          Continue with Google OAuth
+          Continue with Google
         </button>
       </div>
 
-      <div class="auth-divider"><span>or continue with email</span></div>
+      <div class="auth-divider"><span>OR</span></div>
 
       <form id="auth-form" class="auth-form">
         <div id="auth-name-group" class="form-group hidden">
@@ -242,8 +394,8 @@
         </div>
 
         <div class="form-group">
-          <label>Email Address</label>
-          <input type="email" id="auth-email-input" placeholder="name@bank.com" required>
+          <label>Email address</label>
+          <input type="email" id="auth-email-input" placeholder="name@idfcbank.com" required>
         </div>
 
         <div class="form-group">
@@ -251,35 +403,39 @@
           <input type="password" id="auth-password-input" placeholder="••••••••" required>
         </div>
 
-        <button type="submit" id="btn-auth-submit" class="btn btn-primary btn-block">Sign In</button>
+        <button type="submit" id="btn-auth-submit" class="btn btn-chatgpt-primary btn-block">Continue</button>
       </form>
 
       <div class="auth-toggle-footer">
         <span id="auth-toggle-prompt">Don't have an account?</span>
-        <button id="btn-auth-toggle-mode" class="link-btn">Register</button>
+        <button id="btn-auth-toggle-mode" class="link-btn">Sign up</button>
       </div>
     </div>
   </div>
 
   <!-- MULTI-ACCOUNT SWITCHER DRAWER -->
   <div id="account-drawer" class="modal-overlay hidden">
-    <div class="account-drawer-card">
+    <div class="modal-card chatgpt-modal">
       <div class="drawer-header">
-        <h3><i class="fa-solid fa-users"></i> Account Switcher</h3>
-        <button class="modal-close-btn" data-close="account-drawer"><i class="fa-solid fa-xmark"></i></button>
+        <h3>Switch Account</h3>
+        <button class="modal-close-btn" data-close="account-drawer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
-      <p class="drawer-desc">Toggle instantaneously between authenticated banking accounts with zero cross-user data leakage.</p>
+      <p class="modal-subtitle" style="margin-bottom: 16px;">Switch instantly between authenticated accounts with row-level data isolation.</p>
 
       <div id="saved-accounts-list" class="saved-accounts-list">
         <!-- Injected via JavaScript -->
       </div>
 
-      <div class="drawer-actions">
-        <button id="btn-add-account" class="btn btn-secondary btn-block">
-          <i class="fa-solid fa-user-plus"></i> Add Another Account
+      <div class="drawer-actions" style="margin-top: 20px; display: flex; flex-direction: column; gap: 8px;">
+        <button id="btn-add-account" class="btn btn-chatgpt-ghost btn-block">
+          <i class="fa-solid fa-user-plus"></i> Add Account
         </button>
-        <button id="btn-logout-current" class="btn btn-danger btn-block">
-          <i class="fa-solid fa-arrow-right-from-bracket"></i> Logout Active Account
+        <button id="btn-logout-current" class="btn btn-danger-chatgpt btn-block">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Log out
         </button>
       </div>
     </div>
@@ -287,22 +443,32 @@
 
   <!-- ADMIN KNOWLEDGE BASE MANAGEMENT MODAL -->
   <div id="admin-kb-modal" class="modal-overlay hidden">
-    <div class="modal-card modal-card-large">
-      <button class="modal-close-btn" data-close="admin-kb-modal"><i class="fa-solid fa-xmark"></i></button>
+    <div class="modal-card modal-card-large chatgpt-modal">
+      <button class="modal-close-btn" data-close="admin-kb-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
       
       <div class="modal-header">
-        <div class="brand-icon-modal"><i class="fa-solid fa-book-bookmark"></i></div>
+        <div class="chatgpt-logo-modal">
+          <i class="fa-solid fa-shield-halved" style="font-size: 22px;"></i>
+        </div>
         <h3>Knowledge Base Administration</h3>
-        <p class="modal-subtitle">Upload, inspect, OCR process, and manage official regulatory documents</p>
+        <p class="modal-subtitle">Upload, inspect OCR, and manage verified RBI Master Directions & Policies</p>
       </div>
 
-      <!-- Upload Box -->
+      <!-- Upload Dropzone -->
       <div class="upload-dropzone" id="upload-dropzone">
-        <i class="fa-solid fa-cloud-arrow-up dropzone-icon"></i>
-        <h4>Upload Banking Documents / Scanned Circulars</h4>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropzone-icon">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" x2="12" y1="3" y2="15"/>
+        </svg>
+        <h4>Upload Banking Documents or Scanned Circulars</h4>
         <p>Supports PDF, Scanned PDF, DOCX, TXT, CSV, PNG, JPG (Max 25MB)</p>
         <input type="file" id="kb-file-input" class="file-input-hidden" accept=".pdf,.txt,.docx,.csv,.png,.jpg,.jpeg,.md">
-        <button type="button" id="btn-browse-file" class="btn btn-secondary btn-sm">Browse Files</button>
+        <button type="button" id="btn-browse-file" class="btn btn-chatgpt-ghost btn-sm">Select File</button>
       </div>
 
       <!-- Upload Metadata Form -->
@@ -331,16 +497,16 @@
             <input type="date" id="doc-pubdate-input">
           </div>
         </div>
-        <div class="form-actions">
-          <button type="submit" id="btn-submit-upload" class="btn btn-primary">Process & Ingest Document</button>
-          <button type="button" id="btn-cancel-upload" class="btn btn-ghost">Cancel</button>
+        <div class="form-actions" style="display: flex; gap: 8px; margin-top: 12px;">
+          <button type="submit" id="btn-submit-upload" class="btn btn-chatgpt-primary">Ingest Document</button>
+          <button type="button" id="btn-cancel-upload" class="btn btn-chatgpt-ghost">Cancel</button>
         </div>
       </form>
 
       <!-- Ingested Documents Table -->
       <div class="table-header-bar">
-        <h4>Indexed Documents (<span id="kb-doc-count">0</span>)</h4>
-        <button id="btn-reindex-all" class="btn btn-secondary btn-sm" title="Rebuild Vector & Hybrid Index">
+        <h4>Indexed Regulatory Documents (<span id="kb-doc-count">0</span>)</h4>
+        <button id="btn-reindex-all" class="btn btn-chatgpt-ghost btn-sm" title="Rebuild Vector & Hybrid Index">
           <i class="fa-solid fa-arrows-rotate"></i> Re-index All
         </button>
       </div>
@@ -366,21 +532,23 @@
     </div>
   </div>
 
-  <!-- SETTINGS MODAL -->
+  <!-- SETTINGS MODAL (TABBED CHATGPT MODAL) -->
   <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <button class="modal-close-btn" data-close="settings-modal"><i class="fa-solid fa-xmark"></i></button>
-      <div class="modal-header">
-        <div class="brand-icon-modal"><i class="fa-solid fa-sliders"></i></div>
-        <h3>Settings & Preferences</h3>
-        <p class="modal-subtitle">Customize voice, theme, and retrieval parameters</p>
+    <div class="modal-card chatgpt-modal settings-dialog">
+      <button class="modal-close-btn" data-close="settings-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="modal-header" style="text-align: left; margin-bottom: 16px;">
+        <h3>Settings</h3>
       </div>
 
       <div class="settings-section">
         <div class="setting-item">
           <div>
-            <strong>Speech-to-Text Mode</strong>
-            <p>Review speech transcript before sending query</p>
+            <strong>Voice Input Review</strong>
+            <p>Review speech-to-text transcript before sending</p>
           </div>
           <input type="checkbox" id="setting-stt-review" checked>
         </div>
@@ -395,22 +563,25 @@
 
         <div class="setting-item">
           <div>
-            <strong>Speech Synthesis Voice Rate</strong>
-            <p>Speed of Text-to-Speech audio reader</p>
+            <strong>Speech Voice Speed</strong>
+            <p>Adjust reading rate for Text-to-Speech audio</p>
           </div>
           <input type="range" id="setting-tts-rate" min="0.7" max="1.3" step="0.1" value="1.0">
         </div>
 
         <div class="setting-item">
           <div>
-            <strong>Strict No-Internet Enforced</strong>
-            <p>Assures queries are grounded 100% in local knowledge base</p>
+            <strong>Strict Airgap Zero-Internet Policy</strong>
+            <p>100% ground truth from approved RBI & IDFC directives</p>
           </div>
-          <span class="badge badge-success"><i class="fa-solid fa-check"></i> Active</span>
+          <span class="badge-active" style="padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Active</span>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
 
   <!-- Main JavaScript App -->
   <script src="/static/app.js"></script>

@@ -81,3 +81,6 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Workflows (require 'workflow' PAT scope to push)
+.github/

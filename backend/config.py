@@ -22,8 +22,14 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql://postgres:Pandeyji%401405@localhost:5432/chatgpt_idfc_rag"
 
+    # Gemini Flash LLM Settings
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    USE_GEMINI_SYNTHESIS: bool = True
+    GEMINI_TIMEOUT_SECONDS: int = 15
+
     # RAG Tuning Parameters
-    RETRIEVAL_THRESHOLD: float = 0.35
+    RETRIEVAL_THRESHOLD: float = 0.20
     TOP_K_CHUNKS: int = 4
     CHUNK_SIZE: int = 600
     CHUNK_OVERLAP: int = 100

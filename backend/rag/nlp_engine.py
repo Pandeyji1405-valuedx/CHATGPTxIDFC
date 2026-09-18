@@ -104,6 +104,10 @@ EXPANDED_ACRONYMS_INFO = {
 
 # Hinglish & Colloquial Query Patterns to Standard English
 HINGLISH_TRANSLATIONS = [
+    (r"\bmitakenly\b", "mistakenly"),
+    (r"\baccidently\b", "accidentally"),
+    (r"\bgalat\s+account\b", "wrong account"),
+    (r"\bgalat\s+khate\b", "wrong account"),
     (r"\bkya hota hai\b", "what is"),
     (r"\bkya hai\b", "what is"),
     (r"\bkya h\b", "what is"),
@@ -137,10 +141,12 @@ DOMAIN_KEYWORDS = [
     "kyc", "neft", "rtgs", "imps", "upi", "ltv", "npa", "emi", "cibil", "crr", "slr",
     "v-cip", "vcip", "ovd", "kfs", "fastag", "rbi", "idfc", "loan", "lending", "interest",
     "savings", "account", "deposit", "fixed deposit", "recurring deposit", "card", "credit card",
-    "debit card", "transaction", "fraud", "unauthorized", "liability", "circular", "master direction",
+    "debit card", "transaction", "fraud", "unauthorized", "unauthorised", "liability", "circular", "master direction",
     "policy", "penal", "cooling-off", "look-up", "foreclosure", "charges", "settlement", "remittance",
     "ombudsman", "housing", "mortgage", "limit", "rules", "rate", "documents", "aadhaar", "pan",
-    "passport", "sachin", "tendulkar"
+    "passport", "sachin", "tendulkar", "stolen", "lost", "compromised", "scam", "wrong", "mistake",
+    "mistakenly", "mitakenly", "money", "transfer", "transferred", "credit", "debited", "reversal",
+    "compensation", "turnaround", "tat", "delayed", "fail", "failed", "grievance", "complaint", "dispute"
 ]
 
 class NLPEngine:

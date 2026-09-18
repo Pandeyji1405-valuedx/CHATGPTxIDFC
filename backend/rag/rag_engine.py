@@ -116,7 +116,11 @@ class TwoLayerRAGEngine:
             "else", "needed", "required", "this", "that", "more", "bank", "banking",
             "rbi", "policy", "norm", "norms", "circular", "direction", "directions",
             "information", "procedure", "process", "say", "according", "document", "approved",
-            "regulations", "framework", "system", "under"
+            "regulations", "framework", "system", "under", "really", "stressed", "worried",
+            "anxious", "scared", "panicking", "urgent", "urgently", "yesterday", "today",
+            "tomorrow", "used", "send", "sent", "done", "got", "help", "mitakenly",
+            "mistakenly", "wrong", "accidently", "accidentally", "much", "many", "just",
+            "should", "would", "could", "happen", "happens", "money", "rupees", "account"
         }
 
         chunk_lower = chunk_text.lower()
@@ -147,7 +151,16 @@ class TwoLayerRAGEngine:
             if "cooling-off" not in chunk_lower and "look-up" not in chunk_lower:
                 return False
 
-        # 3. Explicit Circular / Notification Code Matching
+        # 3. Situational Banking Scenario Matches
+        if any(w in query_lower for w in ["fraud", "stolen", "unauthorized", "unauthorised", "lost card"]):
+            if any(w in chunk_lower for w in ["unauthorised", "unauthorized", "liability", "third party", "negligence", "customer protection"]):
+                return True
+
+        if any(w in query_lower for w in ["wrong account", "mistakenly", "mitakenly", "galat account", "erroneous"]):
+            if any(w in chunk_lower for w in ["neft", "rtgs", "beneficiary", "return", "remitter", "compensation", "turnaround"]):
+                return True
+
+        # 4. Explicit Circular / Notification Code Matching
         circular_matches = re.findall(r"(?:RBI/\d{4}-\d{2}/\d+|(?:DOR|DBR|DPSS|CEP|FIDD|DBOD|DBS|CIR|IDFC)[A-Z0-9\.\-/]+)", query.upper())
         if circular_matches:
             for circ in circular_matches:
@@ -155,7 +168,7 @@ class TwoLayerRAGEngine:
                 if any(p.lower() in chunk_lower for p in parts):
                     return True
 
-        # 4. Subject-Specific Token Overlap
+        # 5. Subject-Specific Token Overlap
         query_tokens = set(re.findall(r"\b[a-zA-Z0-9_-]{3,}\b", query_lower)) - generic_words
         if not query_tokens:
             return True
@@ -163,8 +176,8 @@ class TwoLayerRAGEngine:
         matched_tokens = {t for t in query_tokens if t in chunk_lower}
         overlap_ratio = len(matched_tokens) / len(query_tokens)
 
-        # Require at least 30% of the specific subject tokens to be present in the retrieved text
-        if len(query_tokens) >= 2 and (len(matched_tokens) < 1 or overlap_ratio < 0.30):
+        # Require at least 20% of the specific subject tokens to be present in the retrieved text
+        if len(query_tokens) >= 2 and (len(matched_tokens) < 1 or overlap_ratio < 0.20):
             return False
 
         return True
@@ -202,13 +215,13 @@ class TwoLayerRAGEngine:
         query_intent: str,
         resolved_entities: List[str],
         kb_chunks: List[Dict[str, Any]],
-        conv_memory: List[Dict[str, Any]]
+        conv_memory: List[Dict[str, Any]],
+        history_msgs: Optional[List[Dict[str, Any]]] = None
     ) -> str:
         """
         Universal Targeted Fact Synthesizer:
         Synthesizes a precise, natural, human-like answer directly targeted to the user's question intent.
-        Extracts specific facts, dates, acronym definitions, numerical limits, charges, procedures,
-        and requirements grounded in official approved documents.
+        Uses Gemini Flash with strict DB/KB context grounding, with graceful fallback to deterministic synthesis.
         """
         if not kb_chunks and not conv_memory:
             return FALLBACK_REFUSAL_MESSAGE
@@ -238,6 +251,20 @@ class TwoLayerRAGEngine:
 
             if not self.validate_answerability(query, chunk_text):
                 return FALLBACK_REFUSAL_MESSAGE
+
+            # 0. Gemini Flash Grounded Synthesis
+            if settings.USE_GEMINI_SYNTHESIS:
+                try:
+                    from backend.rag.gemini_service import gemini_service
+                    gemini_ans = gemini_service.synthesize_grounded_response(
+                        query=query,
+                        retrieved_chunks=matching_chunks,
+                        conversation_history=history_msgs
+                    )
+                    if gemini_ans and len(gemini_ans.strip()) > 20:
+                        return gemini_ans
+                except Exception as e:
+                    logger.warning(f"Gemini grounded synthesis fallback: {e}")
 
             target_entity = resolved_entities[0] if resolved_entities else ""
 
@@ -381,13 +408,23 @@ class TwoLayerRAGEngine:
         # Step 1: NLP Preprocessing, Conversational Chitchat & Coreference
         nlp_res = nlp_engine.process_query(raw_query, conversation_history=history_msgs)
 
-        # Handle Conversational Chitchat (Greetings, Slang, Thanks, Identity)
+        # Handle Conversational Chitchat (Greetings, Slang, Thanks, Identity, Emotional check-in)
         if nlp_res.get("is_chitchat") and nlp_res.get("chitchat_response"):
+            chitchat_ans = nlp_res["chitchat_response"]
+            if settings.USE_GEMINI_SYNTHESIS:
+                try:
+                    from backend.rag.gemini_service import gemini_service
+                    gemini_chit = gemini_service.generate_conversational_chitchat(raw_query, history_msgs)
+                    if gemini_chit and len(gemini_chit.strip()) > 10:
+                        chitchat_ans = gemini_chit
+                except Exception as e:
+                    logger.warning(f"Gemini chitchat fallback: {e}")
+
             return {
                 "original_query": raw_query,
                 "normalized_query": raw_query,
                 "resolved_entities": [],
-                "answer": nlp_res["chitchat_response"],
+                "answer": chitchat_ans,
                 "source_type": "CONVERSATIONAL",
                 "confidence": 1.0,
                 "citations": [],
@@ -537,7 +574,8 @@ class TwoLayerRAGEngine:
             query_intent,
             resolved_entities,
             kb_chunks,
-            conv_matches
+            conv_matches,
+            history_msgs=history_msgs
         )
 
         if raw_answer == FALLBACK_REFUSAL_MESSAGE:

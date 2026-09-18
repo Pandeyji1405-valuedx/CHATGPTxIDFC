@@ -64,8 +64,21 @@ class HybridVectorStore:
                 if re.search(rf"\b{re.escape(term)}\b", text) or re.search(rf"\b{re.escape(term)}\b", doc_title):
                     boost += 0.25
 
+        # Situational Banking Scenarios Boost
+        if re.search(r"\b(STOLEN|LOST CARD|CARD STOLEN|FRAUD|SCAM|UNAUTHORIZED|UNAUTHORISED|COMPROMISED|MISUSED)\b", query_upper):
+            if "UNAUTHORISED" in doc_title or "UNAUTHORIZED" in doc_title or "CUSTOMER PROTECTION" in doc_title or "LIABILITY" in doc_title:
+                boost += 0.45
+
+        if re.search(r"\b(WRONG ACCOUNT|WRONG BENEFICIARY|MISTAKENLY|MITAKENLY|ERRONEOUS|WRONGLY|ACCIDENTALLY)\b", query_upper):
+            if "NEFT" in doc_title or "COMPENSATION" in doc_title or "RTGS" in doc_title or "RETURN" in text:
+                boost += 0.45
+
+        if re.search(r"\b(DELAYED|FAILED TRANSACTION|NOT RECEIVED|DEBITED BUT|STUCK|ATM FAILED|GRIEVANCE|COMPLAINT|DISPUTE)\b", query_upper):
+            if "COMPENSATION" in doc_title or "GRIEVANCE" in doc_title or "TURNAROUND" in text:
+                boost += 0.45
+
         # Check document title word overlap
-        query_words = set(re.findall(r"\w+", query_upper)) - {"WHAT", "IS", "THE", "ARE", "OF", "AND", "IN", "TO", "FOR", "A", "AN", "TELL", "ME", "ABOUT", "HOW"}
+        query_words = set(re.findall(r"\w+", query_upper)) - {"WHAT", "IS", "THE", "ARE", "OF", "AND", "IN", "TO", "FOR", "A", "AN", "TELL", "ME", "ABOUT", "HOW", "CAN", "DO", "DOES", "SHOULD"}
         doc_title_words = set(re.findall(r"\w+", doc_title))
         overlap = query_words & doc_title_words
         if len(overlap) >= 2:
@@ -83,7 +96,7 @@ class HybridVectorStore:
             if any(w in text for w in ["OFFICIALLY VALID DOCUMENTS", "OVD", "CUSTOMER DUE DILIGENCE", "PASSPORT", "AADHAAR", "VOTER", "ELIGIBLE"]):
                 boost += 0.20
 
-        return min(boost, 0.65)
+        return min(boost, 0.75)
 
     def ensure_indexed(self, db: Any = None) -> None:
         """Ensures the hybrid vector store is populated from DB if not already indexed."""

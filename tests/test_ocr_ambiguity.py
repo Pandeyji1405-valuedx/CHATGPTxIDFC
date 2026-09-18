@@ -10,7 +10,15 @@ def test_ocr_character_ambiguity_detector():
     assert "5 ↔ S" in pairs
     assert "8 ↔ B" in pairs
 
-def test_ocr_ambiguity_in_chat_response(client, auth_headers_user1):
+def test_ocr_ambiguity_in_chat_response(client, auth_headers_user1, auth_headers_admin):
+    import io
+    ocr_doc = io.BytesIO(b"Scanned Circular RBI/2024-25/0O18: The penalty for delayed reporting is Rs. 5O,OOO and interest B.5%.")
+    client.post(
+        "/api/admin/documents/upload",
+        files={"file": ("ocr_circular.txt", ocr_doc, "text/plain")},
+        data={"title": "Scanned Circular 0O18", "source": "RBI", "notification_number": "RBI/2024-25/0O18"},
+        headers=auth_headers_admin
+    )
     res = client.post("/api/chat", json={
         "query": "What is the penalty in scanned circular RBI/2024-25/0O18?"
     }, headers=auth_headers_user1)

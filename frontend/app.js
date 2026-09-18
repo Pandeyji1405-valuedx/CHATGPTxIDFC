@@ -203,8 +203,17 @@ async function validateOrRefreshToken() {
 
 async function authenticatedFetch(url, options = {}) {
   let headers = { ...(options.headers || {}), ...getAuthHeader() };
-  let res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
+  let res;
+  try {
+    res = await fetch(url, { ...options, headers });
+  } catch (err) {
+    // Retry once after 600ms if initial connection failed (e.g. server auto-reload)
+    if (options.signal && options.signal.aborted) throw err;
+    await new Promise(r => setTimeout(r, 600));
+    res = await fetch(url, { ...options, headers });
+  }
+
+  if (res && res.status === 401) {
     const newToken = await validateOrRefreshToken();
     if (newToken) {
       headers = { ...(options.headers || {}), "Authorization": `Bearer ${newToken}` };
@@ -862,7 +871,11 @@ async function sendChatMessage(queryText) {
       return;
     }
 
-    renderMessage("assistant", err.message || "Something went wrong while processing your request. Please try again.", {
+    const friendlyErr = (err.message === "Failed to fetch" || err.message?.includes("NetworkError"))
+      ? "Unable to reach the server. The connection was temporarily interrupted, please try again."
+      : (err.message || "Something went wrong while processing your request. Please try again.");
+
+    renderMessage("assistant", friendlyErr, {
       source_type: "NO_SUPPORTED_SOURCE"
     });
   } finally {

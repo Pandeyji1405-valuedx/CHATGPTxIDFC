@@ -55,29 +55,43 @@ class AnswerValidator:
 
         answer_facts = self.extract_factual_tokens(answer)
         context_upper = retrieved_context.upper()
+        # Normalized context for OCR character tolerance (0 <-> O, 5 <-> S, 8 <-> B, 1 <-> I)
+        ocr_normalized_context = (
+            context_upper
+            .replace("O", "0")
+            .replace("S", "5")
+            .replace("B", "8")
+            .replace("I", "1")
+        )
         violations = []
 
         # Check circulars
         for raw_circ in answer_facts["circulars"]:
             circ = raw_circ.strip(".,;:()[]{}'\" \t\n")
-            if circ and circ.upper() not in context_upper:
+            norm_circ = circ.upper().replace("O", "0").replace("S", "5").replace("B", "8").replace("I", "1")
+            if circ and (circ.upper() not in context_upper and norm_circ not in ocr_normalized_context):
                 violations.append(f"Regulatory circular '{circ}' not found in retrieved context.")
 
         # Check percentages
         for raw_pct in answer_facts["percentages"]:
             pct = raw_pct.strip(".,;:()[]{}'\" \t\n")
             clean_pct = pct.replace(" ", "")
-            if clean_pct and clean_pct not in context_upper.replace(" ", ""):
-                num_only = re.sub(r"[^\d\.]", "", clean_pct)
-                if num_only and num_only not in context_upper:
-                    violations.append(f"Percentage '{pct}' not verified by retrieved sources.")
+            num_only = re.sub(r"[^\d\.]", "", clean_pct)
+            norm_pct = clean_pct.replace("O", "0").replace("S", "5").replace("B", "8").replace("I", "1")
+
+            in_direct = clean_pct in context_upper.replace(" ", "") or (num_only and num_only in context_upper)
+            in_ocr = norm_pct in ocr_normalized_context.replace(" ", "") or (num_only and num_only in ocr_normalized_context)
+            if not in_direct and not in_ocr:
+                violations.append(f"Percentage '{pct}' not verified by retrieved sources.")
 
         # Check monetary limits
         for raw_money in answer_facts["monetary"]:
             money = raw_money.strip(".,;:()[]{}'\" \t\n")
             digits = re.findall(r"\d+", money)
-            if digits and not any(d in context_upper for d in digits):
-                violations.append(f"Monetary figure '{money}' not verified by retrieved sources.")
+            if digits:
+                found = any(d in context_upper for d in digits) or any(d in ocr_normalized_context for d in digits)
+                if not found:
+                    violations.append(f"Monetary figure '{money}' not verified by retrieved sources.")
 
         if violations:
             # If critical facts are unverified, fall back to controlled refusal

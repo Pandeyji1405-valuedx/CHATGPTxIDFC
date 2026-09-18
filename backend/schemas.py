@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -8,9 +8,25 @@ class UserRegisterRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=255)
     password: str = Field(..., min_length=6)
 
+    @field_validator("name", "email")
+    @classmethod
+    def strip_and_validate(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Field cannot be empty or whitespace only")
+        return s
+
 class UserLoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., min_length=3, max_length=255)
+    password: str = Field(..., min_length=1)
+
+    @field_validator("email")
+    @classmethod
+    def strip_email(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Email cannot be empty")
+        return s
 
 class GoogleAuthRequest(BaseModel):
     credential: str # Google ID token or token string
@@ -91,9 +107,25 @@ class ConversationCreate(BaseModel):
 class ConversationRename(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
 
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Title cannot be empty or whitespace only")
+        return s
+
 class ChatQueryRequest(BaseModel):
     conversation_id: Optional[str] = None
     query: str = Field(..., min_length=1)
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, v: str) -> str:
+        s = v.strip()
+        if not s:
+            raise ValueError("Query cannot be empty or whitespace only")
+        return s
 
 class ChatQueryResponse(BaseModel):
     conversation_id: str
@@ -134,3 +166,14 @@ class KnowledgeDocumentResponse(BaseModel):
 class DocumentDetailResponse(BaseModel):
     document: KnowledgeDocumentResponse
     chunks_preview: List[Dict[str, Any]] = []
+
+class ChatFeedbackRequest(BaseModel):
+    message_id: str
+    rating: int = Field(..., ge=1, le=5)
+    feedback_text: Optional[str] = None
+    category: Optional[str] = "ACCURACY"
+
+class ChatFeedbackResponse(BaseModel):
+    status: str
+    message: str
+    message_id: str

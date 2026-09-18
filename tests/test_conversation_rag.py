@@ -126,4 +126,92 @@ def test_conversation_db_does_not_match_greeting_substring(client, auth_headers_
     assert data["source_type"] == "KNOWLEDGE_BASE"
     assert "How can I help you today" not in data["answer"]
 
+def test_universal_question_aware_synthesis_and_redis_context(client, auth_headers_user1):
+    # Turn 1: "What is NEFT and what are its operating hours?"
+    res1 = client.post("/api/chat", json={
+        "query": "What is NEFT and what are its operating hours?"
+    }, headers=auth_headers_user1)
+    assert res1.status_code == 200
+    conv_id = res1.json()["conversation_id"]
+    data1 = res1.json()
+    assert "NEFT" in data1["resolved_entities"]
+    assert "24x7" in data1["answer"] or "batches" in data1["answer"]
+
+    # Turn 2: "when did this came into action"
+    res2 = client.post("/api/chat", json={
+        "conversation_id": conv_id,
+        "query": "when did this came into action"
+    }, headers=auth_headers_user1)
+    assert res2.status_code == 200
+    data2 = res2.json()
+    # Must synthesize exact effective date rather than repeating raw chunk
+    assert "December 16, 2019" in data2["answer"] or "2019" in data2["answer"]
+    assert "came into effect on" in data2["answer"]
+
+    # Turn 3: "what is the full form of neft"
+    res3 = client.post("/api/chat", json={
+        "conversation_id": conv_id,
+        "query": "what is the full form of neft"
+    }, headers=auth_headers_user1)
+    assert res3.status_code == 200
+    data3 = res3.json()
+    # Must directly expand the acronym
+    assert "National Electronic Funds Transfer" in data3["answer"]
+    assert "full form of" in data3["answer"].lower()
+
+    # Turn 4: "what are its charges"
+    res4 = client.post("/api/chat", json={
+        "conversation_id": conv_id,
+        "query": "what are its charges"
+    }, headers=auth_headers_user1)
+    assert res4.status_code == 200
+    data4 = res4.json()
+    assert any(term in data4["answer"].lower() for term in ["charges", "waived", "prohibited", "penal", "penalty"])
+
+def test_redis_cache_operations():
+    from backend.cache.redis_cache import redis_cache
+    # Test setting and getting context
+    redis_cache.cache_conversation_context(
+        user_id="test_user_1",
+        conv_id="conv_100",
+        context_data={"topic": "NEFT", "intent": "TEMPORAL_EFFECTIVE"}
+    )
+    ctx = redis_cache.get_conversation_context(user_id="test_user_1", conv_id="conv_100")
+    assert ctx is not None
+    assert ctx["topic"] == "NEFT"
+    assert ctx["intent"] == "TEMPORAL_EFFECTIVE"
+
+    # Test topic facts caching
+    redis_cache.cache_topic_facts("test_user_1", "conv_100", "NEFT", {"effective_date": "December 16, 2019"})
+    facts = redis_cache.get_topic_facts("test_user_1", "conv_100", "NEFT")
+    assert facts is not None
+    assert facts["effective_date"] == "December 16, 2019"
+
+def test_catalog_available_documents_intent(client, auth_headers_user1):
+    res = client.post("/api/chat", json={
+        "query": "What official RBI Master Directions and IDFC Bank policies are available in the knowledge base?"
+    }, headers=auth_headers_user1)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["source_type"] == "KNOWLEDGE_BASE"
+    assert "Reserve Bank of India" in data["answer"]
+    assert "IDFC FIRST Bank" in data["answer"]
+    assert "KYC" in data["answer"]
+    assert "NEFT" in data["answer"]
+    assert "Digital Lending" in data["answer"]
+    assert "FASTag" in data["answer"]
+
+def test_fastag_reloading_procedural_intent(client, auth_headers_user1):
+    res = client.post("/api/chat", json={
+        "query": "how the fastag can be reloaded"
+    }, headers=auth_headers_user1)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["source_type"] == "KNOWLEDGE_BASE"
+    assert "savings account" in data["answer"].lower()
+    assert "auto-recharge" in data["answer"].lower()
+    # Must NOT have raw 'Section 1: ...' unparsed prefix
+    assert "Section 1: IDFC FIRST FASTag Issuance and Auto-Recharge" not in data["answer"]
+
+
 

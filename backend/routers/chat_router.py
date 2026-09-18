@@ -5,7 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import User, Conversation, Message, Response, Entity, AuditLog, get_utc_now
-from backend.schemas import ChatQueryRequest, ChatQueryResponse, CitationItem, AmbiguityFlag
+from backend.schemas import (
+    ChatQueryRequest, ChatQueryResponse, CitationItem, AmbiguityFlag,
+    ChatFeedbackRequest, ChatFeedbackResponse
+)
 from backend.auth import get_current_user
 from backend.rag.rag_engine import rag_engine
 
@@ -155,4 +158,40 @@ def handle_chat_query(
         citations=[CitationItem(**c) for c in rag_result["citations"]],
         ambiguity_flags=[AmbiguityFlag(**a) for a in rag_result["ambiguity_flags"]],
         clarification_needed=rag_result["clarification_needed"]
+    )
+
+@router.post("/feedback", response_model=ChatFeedbackResponse)
+def submit_chat_feedback(
+    req: ChatFeedbackRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Submits user accuracy feedback and ratings on specific assistant messages
+    for regulatory audit compliance.
+    """
+    msg = db.query(Message).filter(Message.id == req.message_id).first()
+    if not msg:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target message not found"
+        )
+
+    # Save to AuditLog
+    audit = AuditLog(
+        user_id=current_user.id,
+        action="FEEDBACK",
+        resource_type="message",
+        resource_id=req.message_id,
+        details=f"Rating: {req.rating}/5, Category: {req.category}, Comments: {req.feedback_text or 'None'}",
+        ip_address=request.client.host if request.client else "127.0.0.1"
+    )
+    db.add(audit)
+    db.commit()
+
+    return ChatFeedbackResponse(
+        status="recorded",
+        message="Thank you! Your feedback has been recorded for compliance and accuracy auditing.",
+        message_id=req.message_id
     )

@@ -15,9 +15,15 @@ from backend.database import Base, get_db
 from backend.ingestion.seed_rbi_kb import seed_database_and_vector_store
 from backend.config import settings
 
-# Test database
-TEST_DB_URL = "sqlite:///./data/test_banking_rag.db"
-test_engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+from sqlalchemy.pool import StaticPool
+
+# In-memory test database for fast, isolated test runs without disk residue
+TEST_DB_URL = "sqlite:///:memory:"
+test_engine = create_engine(
+    TEST_DB_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 def override_get_db():
@@ -37,11 +43,13 @@ def setup_test_environment():
     yield
     # Teardown
     Base.metadata.drop_all(bind=test_engine)
-    if os.path.exists("./data/test_banking_rag.db"):
-        try:
-            os.remove("./data/test_banking_rag.db")
-        except Exception:
-            pass
+    if os.path.exists(settings.UPLOAD_DIR):
+        for f in os.listdir(settings.UPLOAD_DIR):
+            if f != ".gitkeep":
+                try:
+                    os.remove(os.path.join(settings.UPLOAD_DIR, f))
+                except OSError:
+                    pass
 
 @pytest.fixture
 def client():

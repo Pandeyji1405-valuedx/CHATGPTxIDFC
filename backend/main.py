@@ -45,6 +45,8 @@ async def add_process_time_and_security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     return response
 
 # Global Safe Error Handler to prevent stack trace leakage to clients
@@ -79,11 +81,49 @@ def serve_index():
 @app.get("/health")
 @app.get("/api/health")
 def health_check():
+    from backend.database import SessionLocal
+    from backend.models import KnowledgeDocument, KnowledgeChunk
+    from backend.rag.vector_store import hybrid_vector_store
+    from backend.cache.redis_cache import redis_cache
+    from sqlalchemy import text
+
+    db_status = "connected"
+    db_latency_ms = 0.0
+    doc_count = 0
+    chunk_count = 0
+
+    t0 = time.time()
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db_latency_ms = round((time.time() - t0) * 1000, 2)
+        doc_count = db.query(KnowledgeDocument).count()
+        chunk_count = db.query(KnowledgeChunk).count()
+        hybrid_vector_store.ensure_indexed(db)
+        db.close()
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+
     return {
-        "status": "healthy",
+        "status": "healthy" if db_status == "connected" else "degraded",
         "app": settings.APP_NAME,
         "version": settings.VERSION,
-        "mode": "Zero-Internet Strict Answering"
+        "database": {
+            "status": db_status,
+            "latency_ms": db_latency_ms,
+            "engine": engine.dialect.name,
+            "documents_count": doc_count,
+            "chunks_count": chunk_count
+        },
+        "vector_store": {
+            "is_indexed": hybrid_vector_store.is_indexed,
+            "indexed_records": len(hybrid_vector_store.chunk_records)
+        },
+        "cache": {
+            "status": "active",
+            "backend": "redis" if getattr(redis_cache, "is_redis_available", False) else "in_memory_lru"
+        },
+        "mode": "Zero-Internet Strict Banking Grounded RAG"
     }
 
 if __name__ == "__main__":

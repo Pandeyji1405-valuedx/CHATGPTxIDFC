@@ -85,16 +85,54 @@ class HybridVectorStore:
 
         return min(boost, 0.65)
 
+    def ensure_indexed(self, db: Any = None) -> None:
+        """Ensures the hybrid vector store is populated from DB if not already indexed."""
+        if self.is_indexed and self.chunk_records and self.tfidf_matrix is not None:
+            return
+        
+        from backend.database import SessionLocal
+        local_db = db or SessionLocal()
+        should_close = db is None
+        try:
+            from backend.models import KnowledgeChunk, KnowledgeDocument
+            chunks = (
+                local_db.query(KnowledgeChunk, KnowledgeDocument)
+                .join(KnowledgeDocument, KnowledgeChunk.document_id == KnowledgeDocument.id)
+                .all()
+            )
+            all_chunks = []
+            for chunk, doc in chunks:
+                all_chunks.append({
+                    "id": chunk.id,
+                    "document_id": doc.id,
+                    "doc_title": doc.title,
+                    "notification_number": doc.notification_number,
+                    "source": doc.source,
+                    "page_number": chunk.page_number,
+                    "section": chunk.section,
+                    "chunk_text": chunk.chunk_text,
+                    "publication_date": doc.publication_date
+                })
+            if all_chunks:
+                self.build_index(all_chunks)
+        finally:
+            if should_close:
+                local_db.close()
+
     def search(
         self,
         query: str,
         top_k: int = 4,
-        threshold: Optional[float] = None
+        threshold: Optional[float] = None,
+        db: Any = None
     ) -> List[Dict[str, Any]]:
         """
         Performs hybrid semantic and keyword search.
         Returns chunks meeting or exceeding the retrieval threshold.
         """
+        if not self.is_indexed or self.tfidf_matrix is None or not self.chunk_records:
+            self.ensure_indexed(db=db)
+
         if not self.is_indexed or self.tfidf_matrix is None or not self.chunk_records:
             return []
 

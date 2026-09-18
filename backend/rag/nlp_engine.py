@@ -27,6 +27,81 @@ BANKING_ACRONYMS = {
     "RD": "Recurring Deposit (RD)"
 }
 
+EXPANDED_ACRONYMS_INFO = {
+    "NEFT": {
+        "full_form": "National Electronic Funds Transfer",
+        "description": "An electronic funds transfer system maintained and operated by the Reserve Bank of India (RBI) that operates round-the-clock (24x7x365) in 48 half-hourly settlement batches daily."
+    },
+    "RTGS": {
+        "full_form": "Real Time Gross Settlement",
+        "description": "A continuous, real-time gross settlement system operated 24x7x365 by RBI for large-value payments with a minimum threshold of ₹2,00,000 and no upper limit."
+    },
+    "IMPS": {
+        "full_form": "Immediate Payment Service",
+        "description": "An instant 24x7 interbank electronic fund transfer service operated by National Payments Corporation of India (NPCI)."
+    },
+    "UPI": {
+        "full_form": "Unified Payments Interface",
+        "description": "An instant real-time payment architecture developed by NPCI facilitating seamless peer-to-peer (P2P) and person-to-merchant (P2M) transactions on mobile apps."
+    },
+    "KYC": {
+        "full_form": "Know Your Customer",
+        "description": "A mandatory customer identification and due diligence process mandated by RBI under KYC Directions, 2016 to prevent money laundering and fraud."
+    },
+    "V-CIP": {
+        "full_form": "Video-based Customer Identification Process",
+        "description": "An official digital customer identification method permitted by RBI allowing bank staff to conduct live, geo-tagged video interaction and real-time Aadhaar/PAN verification."
+    },
+    "OVD": {
+        "full_form": "Officially Valid Document",
+        "description": "The six approved identity documents recognized by RBI: Passport, Driving License, Proof of possession of Aadhaar number, Voter's Identity Card, NREGA Job Card, and NPR Letter."
+    },
+    "LTV": {
+        "full_form": "Loan to Value Ratio",
+        "description": "The ratio of the housing loan amount to the property value, capped by RBI at 90% for loans up to ₹30 Lakhs, 80% for ₹30L–₹75L, and 75% for loans above ₹75 Lakhs."
+    },
+    "NPA": {
+        "full_form": "Non-Performing Asset",
+        "description": "A loan or credit facility where the principal or interest payment has remained overdue for a period exceeding 90 days."
+    },
+    "EMI": {
+        "full_form": "Equated Monthly Installment",
+        "description": "A fixed monthly payment made by a borrower to a lender combining principal repayment and interest charges."
+    },
+    "KFS": {
+        "full_form": "Key Fact Statement",
+        "description": "A standardized disclosure sheet mandated under RBI Digital Lending rules outlining the all-inclusive Annual Percentage Rate (APR), cooling-off period, and grievance contacts."
+    },
+    "CIBIL": {
+        "full_form": "Credit Information Bureau (India) Limited",
+        "description": "A premier Credit Information Company (CIC) licensed by RBI that tracks credit history and generates credit scores for retail and corporate borrowers."
+    },
+    "CRR": {
+        "full_form": "Cash Reserve Ratio",
+        "description": "The minimum percentage of Net Demand and Time Liabilities (NDTL) that commercial banks must maintain in liquid cash with the RBI."
+    },
+    "SLR": {
+        "full_form": "Statutory Liquidity Ratio",
+        "description": "The minimum reserve percentage of NDTL that commercial banks must maintain in the form of gold, cash, or approved government securities."
+    },
+    "PSL": {
+        "full_form": "Priority Sector Lending",
+        "description": "RBI statutory target requiring domestic commercial banks to lend 40% of Adjusted Net Bank Credit (ANBC) to priority sectors including Agriculture, MSME, Education, and Housing."
+    },
+    "FASTAG": {
+        "full_form": "FASTag Electronic Toll Collection",
+        "description": "An electronic toll payment system employing RFID technology for automatic toll fee deduction directly from a linked bank account or prepaid wallet."
+    },
+    "FD": {
+        "full_form": "Fixed Deposit",
+        "description": "A term deposit product offered by banks where money is deposited for a fixed tenure at a fixed interest rate."
+    },
+    "RD": {
+        "full_form": "Recurring Deposit",
+        "description": "A regular investment deposit product allowing individuals to save a fixed monthly sum and earn interest equivalent to fixed deposits."
+    }
+}
+
 # Hinglish & Colloquial Query Patterns to Standard English
 HINGLISH_TRANSLATIONS = [
     (r"\bkya hota hai\b", "what is"),
@@ -220,6 +295,31 @@ class NLPEngine:
         normalized = re.sub(r"\s+", " ", normalized).strip()
         return normalized
 
+    def normalize_acronym_aliases(self, text: str) -> str:
+        """Standardizes dotted, spaced, and alternate acronym spellings to canonical forms."""
+        normalized = text
+        aliases = [
+            (r"\bN\.?E\.?F\.?T\.?\b", "NEFT"),
+            (r"\bR\.?T\.?G\.?S\.?\b", "RTGS"),
+            (r"\bI\.?M\.?P\.?S\.?\b", "IMPS"),
+            (r"\bU\.?P\.?I\.?\b", "UPI"),
+            (r"\bK\.?Y\.?C\.?\b", "KYC"),
+            (r"\bV[\.\-\s]?C[\.\-\s]?I[\.\-\s]?P\.?\b", "V-CIP"),
+            (r"\bO\.?V\.?D\.?\b", "OVD"),
+            (r"\bK\.?F\.?S\.?\b", "KFS"),
+            (r"\bF\.?A\.?S\.?T\.?A\.?G\.?\b|\bfast\s+tag\b", "FASTag"),
+            (r"\bE\.?M\.?I\.?\b", "EMI"),
+            (r"\bN\.?P\.?A\.?\b", "NPA"),
+            (r"\bL\.?T\.?V\.?\b", "LTV"),
+            (r"\bC\.?I\.?B\.?I\.?L\.?\b", "CIBIL"),
+            (r"\bC\.?R\.?R\.?\b", "CRR"),
+            (r"\bS\.?L\.?R\.?\b", "SLR"),
+            (r"\bP\.?S\.?L\.?\b", "PSL")
+        ]
+        for pattern, replacement in aliases:
+            normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+        return re.sub(r"\s+", " ", normalized).strip()
+
     def resolve_coreference(
         self,
         current_query: str,
@@ -396,6 +496,55 @@ class NLPEngine:
 
         return current_query, [], False
 
+    def analyze_query_intent(self, query: str) -> Dict[str, Any]:
+        """
+        Analyzes the semantic intent of a banking query to drive targeted fact synthesis:
+        - FULL_FORM_ACRONYM: Acronym expansion and meaning
+        - TEMPORAL_EFFECTIVE: Effective dates, inception dates, circular timing
+        - OPERATING_HOURS_TIMELINES: Operating hours, batch schedules, turnaround times
+        - NUMERICAL_LIMITS: Min/Max transaction amounts, LTV ratios, compensation caps
+        - CHARGES_PENALTIES: Fees, waivers, penal interest rates, delay penalties
+        - REQUIREMENTS_DOCUMENTS: OVD list, identity proof, Aadhaar/PAN, eligibility
+        - PROCEDURAL_HOWTO: Step-by-step procedure, settlement flow, complaint escalation
+        - RIGHTS_LIABILITY: Zero liability, limited customer liability, cooling-off rights
+        - COMPARISON: Differences between payment modes or schemes
+        - GENERAL_FACTUAL: Default open-ended regulatory inquiry
+        """
+        q = query.lower()
+
+        # Check Catalog / Available Documents Intent
+        if re.search(r"\b(what|which|list|show|tell\s+me\s+about)\s+(all\s+)?(official\s+)?(rbi\s+master\s+directions?|master\s+directions?|policies|bank\s+policies|documents?|circulars?|guidelines?|topics?|data)\s+(are\s+)?(available|present|in\s+(the\s+)?knowledge\s+base|in\s+(the\s+)?database|stored|indexed|covered)\b", q) or re.search(r"\b(what\s+do\s+you\s+know|what\s+can\s+i\s+ask|what\s+topics\s+are\s+available|available\s+in\s+the\s+knowledge\s+base|list\s+all\s+documents|what\s+policies\s+are\s+available)\b", q):
+            return {"intent": "CATALOG_DOCUMENT_LIST"}
+
+        if re.search(r"\b(full\s*form|stand\s*for|stands\s*for|expand|expansion|abbreviation|meaning\s+of\s+acronym|what\s+does\s+[a-z\-]+\s+stand\s+for)\b", q):
+            return {"intent": "FULL_FORM_ACRONYM"}
+
+        if re.search(r"\b(when\s+did|when\s+was|effective\s+date|start\s+date|launch\s+date|since\s+when|from\s+which\s+date|date\s+of\s+effect|came\s+into\s+action|came\s+into\s+effect|in\s+effect|what\s+date|which\s+year|since\s+which\s+year|historical\s+date)\b", q):
+            return {"intent": "TEMPORAL_EFFECTIVE"}
+
+        if re.search(r"\b(operating\s+hours|timings?|working\s+hours|settlement\s+batch|how\s+many\s+batches|batch\s+timings?|24x7|settlement\s+timeline|turnaround\s+time|credit\s+timeline|return\s+timeline|how\s+long\s+does\s+it\s+take|tat)\b", q):
+            return {"intent": "OPERATING_HOURS_TIMELINES"}
+
+        if re.search(r"\b(minimum\s+amount|maximum\s+amount|max\s+limit|min\s+limit|transaction\s+limit|ltv|loan\s+to\s+value|max\s+ltv|cap|compensation\s+amount|how\s+much\s+money|what\s+is\s+the\s+limit|ceiling|maximum\s+loan|threshold)\b", q):
+            return {"intent": "NUMERICAL_LIMITS"}
+
+        if re.search(r"\b(charges?|fees?|cost|free\s+or\s+paid|penal\s+interest|penalty|penalties|late\s+payment|penal\s+rate|fine|waiver|waived)\b", q):
+            return {"intent": "CHARGES_PENALTIES"}
+
+        if re.search(r"\b(documents?|docs?|ovd|officially\s+valid|aadhaar|pan|passport|voter|job\s+card|paperwork|eligibility|eligible|needed|required|prerequisites?|what\s+else\s+is\s+needed)\b", q):
+            return {"intent": "REQUIREMENTS_DOCUMENTS"}
+
+        if re.search(r"\b(zero\s+liability|customer\s+liability|limited\s+liability|cooling-off|look-up|unauthorized|fraud|shadow\s+reversal|borrower\s+consent)\b", q):
+            return {"intent": "RIGHTS_LIABILITY"}
+
+        if re.search(r"\b(difference\s+between|vs|versus|compare|distinction|diff)\b", q):
+            return {"intent": "COMPARISON"}
+
+        if re.search(r"\b(how\s+to|steps?\s+to|process|procedure|method|how\s+does.*work|how\s+can\s+i|how\s+the.*can\s+be|workflow|complaint\s+filing|how\s+to\s+file|mechanism|how\s+to\s+reload|how.*reloaded|how.*recharged?)\b", q):
+            return {"intent": "PROCEDURAL_HOWTO"}
+
+        return {"intent": "GENERAL_FACTUAL"}
+
     def process_query(
         self,
         query: str,
@@ -407,6 +556,7 @@ class NLPEngine:
         2. Normalize Hinglish / colloquial phrasing.
         3. Coreference / pronoun resolution against conversation history.
         4. Entity extraction.
+        5. Query intent classification for precise answer synthesis.
         """
         conversation_history = conversation_history or []
         original_query = query.strip()
@@ -421,22 +571,27 @@ class NLPEngine:
                 "extracted_entities": [],
                 "clarification_needed": False,
                 "is_chitchat": True,
-                "chitchat_response": chitchat["response"]
+                "chitchat_response": chitchat["response"],
+                "query_intent": "CHITCHAT"
             }
 
         target_query = chitchat["cleaned_query"] if (chitchat and "cleaned_query" in chitchat) else original_query
 
-        # Step 2: Normalize Hinglish
+        # Step 2: Normalize Hinglish and Banking Acronym Aliases
         hinglish_normalized = self.normalize_hinglish(target_query)
+        acronym_normalized = self.normalize_acronym_aliases(hinglish_normalized)
 
         # Step 3: Coreference resolution
         resolved_query, resolved_entities, clarification_needed = self.resolve_coreference(
-            hinglish_normalized, conversation_history
+            acronym_normalized, conversation_history
         )
 
         # Step 4: Extract entities
         entities = self.extract_entities(resolved_query)
         all_resolved_names = list(set(resolved_entities + [e["canonical_value"] for e in entities] + [e["entity_value"] for e in entities]))
+
+        # Step 5: Semantic Intent Analysis
+        intent_info = self.analyze_query_intent(resolved_query)
 
         return {
             "original_query": original_query,
@@ -445,7 +600,9 @@ class NLPEngine:
             "extracted_entities": entities,
             "clarification_needed": clarification_needed,
             "is_chitchat": False,
-            "chitchat_response": None
+            "chitchat_response": None,
+            "query_intent": intent_info["intent"]
         }
 
 nlp_engine = NLPEngine()
+

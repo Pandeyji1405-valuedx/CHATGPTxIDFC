@@ -2,16 +2,24 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from backend.config import settings
 
-# For SQLite, enable WAL mode and foreign key enforcement for high performance and integrity
-connect_args = {"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+is_sqlite = "sqlite" in settings.DATABASE_URL
+connect_args = {"check_same_thread": False} if is_sqlite else {}
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args=connect_args,
-    echo=False
-)
+engine_kwargs = {
+    "connect_args": connect_args,
+    "echo": False,
+}
+if not is_sqlite:
+    engine_kwargs.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,
+    })
 
-if "sqlite" in settings.DATABASE_URL:
+engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
+
+if is_sqlite:
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()

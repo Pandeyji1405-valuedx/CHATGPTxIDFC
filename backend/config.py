@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = "mock-google-client-id-banking-idfc.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET: str = "mock-google-client-secret-banking-idfc"
 
-    DATABASE_URL: str = "sqlite:///./data/banking_rag.db"
+    DATABASE_URL: str = "postgresql://postgres:Pandeyji%401405@localhost:5432/chatgpt_idfc_rag"
 
     # RAG Tuning Parameters
     RETRIEVAL_THRESHOLD: float = 0.35

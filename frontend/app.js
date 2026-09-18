@@ -161,6 +161,59 @@ function loadAccountsFromStorage() {
   }
 }
 
+async function validateOrRefreshToken() {
+  const account = getActiveAccount();
+  if (account && account.token) {
+    try {
+      const checkRes = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { "Authorization": `Bearer ${account.token}` }
+      });
+      if (checkRes.ok) {
+        return account.token;
+      }
+    } catch (e) {
+      console.log("Token validation check error:", e);
+    }
+  }
+
+  // Token is missing, expired, or invalid. Auto-login default customer user.
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "customer@idfcbank.com", password: "Customer@123" })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const newAcc = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        token: data.access_token
+      };
+      addAccount(newAcc);
+      return data.access_token;
+    }
+  } catch (err) {
+    console.error("Auto session recover failed:", err);
+  }
+  return null;
+}
+
+async function authenticatedFetch(url, options = {}) {
+  let headers = { ...(options.headers || {}), ...getAuthHeader() };
+  let res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    const newToken = await validateOrRefreshToken();
+    if (newToken) {
+      headers = { ...(options.headers || {}), "Authorization": `Bearer ${newToken}` };
+      res = await fetch(url, { ...options, headers });
+    }
+  }
+  return res;
+}
+
 function updateUIForAuth() {
   const account = getActiveAccount();
   if (account) {
@@ -361,13 +414,13 @@ async function loadConversations(searchQuery = null) {
       ? `${API_BASE}/api/conversations/search?q=${encodeURIComponent(searchQuery)}`
       : `${API_BASE}/api/conversations`;
 
-    const res = await fetch(url, { headers: getAuthHeader() });
+    const res = await authenticatedFetch(url);
     if (!res.ok) throw new Error("Failed to load conversations");
     state.conversations = await res.json();
     renderConversationList(state.conversations);
   } catch (err) {
     console.error(err);
-    DOM.conversationList.innerHTML = `<div class="list-skeleton">Error loading conversations.</div>`;
+    DOM.conversationList.innerHTML = `<div class="list-skeleton">No conversations yet.</div>`;
   }
 }
 
@@ -439,7 +492,7 @@ async function selectConversation(id) {
   renderConversationList(state.conversations);
 
   try {
-    const res = await fetch(`${API_BASE}/api/conversations/${id}`, { headers: getAuthHeader() });
+    const res = await authenticatedFetch(`${API_BASE}/api/conversations/${id}`);
     if (!res.ok) throw new Error("Failed to load conversation messages");
     const detail = await res.json();
     DOM.messagesStream.innerHTML = "";
@@ -465,9 +518,9 @@ async function renameConversationPrompt(id, oldTitle) {
   const newTitle = prompt("Rename chat title:", oldTitle);
   if (newTitle && newTitle.trim() && newTitle !== oldTitle) {
     try {
-      const res = await fetch(`${API_BASE}/api/conversations/${id}`, {
+      const res = await authenticatedFetch(`${API_BASE}/api/conversations/${id}`, {
         method: "PUT",
-        headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTitle.trim() })
       });
       if (res.ok) {
@@ -483,9 +536,8 @@ async function renameConversationPrompt(id, oldTitle) {
 async function deleteConversationPrompt(id) {
   if (confirm("Delete this conversation?")) {
     try {
-      const res = await fetch(`${API_BASE}/api/conversations/${id}`, {
-        method: "DELETE",
-        headers: getAuthHeader()
+      const res = await authenticatedFetch(`${API_BASE}/api/conversations/${id}`, {
+        method: "DELETE"
       });
       if (res.ok) {
         showToast("Chat deleted");
@@ -577,7 +629,7 @@ function renderMessage(role, content, meta = {}) {
 
       citationsHtml = `
         <div class="citations-wrapper">
-          <button class="citations-toggle-btn" onclick="this.nextElementSibling.classList.toggle('hidden')">
+          <button class="citations-toggle-btn" type="button">
             <i class="fa-solid fa-chevron-down"></i> ${meta.citations.length} verified source citation(s)
           </button>
           <div class="citations-list hidden">
@@ -639,8 +691,15 @@ function renderMessage(role, content, meta = {}) {
     </div>
   `;
 
-  // Attach handlers
   if (!isUser) {
+    const citeToggleBtn = row.querySelector(".citations-toggle-btn");
+    if (citeToggleBtn) {
+      citeToggleBtn.addEventListener("click", () => {
+        const list = citeToggleBtn.nextElementSibling;
+        if (list) list.classList.toggle("hidden");
+      });
+    }
+
     const copyBtn = row.querySelector(".btn-copy-msg");
     if (copyBtn) {
       copyBtn.addEventListener("click", () => {
@@ -660,17 +719,49 @@ function renderMessage(role, content, meta = {}) {
 
     const thumbUp = row.querySelector(".btn-thumb-up");
     if (thumbUp) {
-      thumbUp.addEventListener("click", () => {
+      thumbUp.addEventListener("click", async () => {
         thumbUp.classList.toggle("active");
         showToast("Feedback recorded");
+        if (meta && meta.assistant_message_id) {
+          try {
+            await fetch(`${API_BASE}/api/chat/feedback`, {
+              method: "POST",
+              headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message_id: meta.assistant_message_id,
+                rating: 5,
+                category: "ACCURACY",
+                feedback_text: "Helpful and accurate answer"
+              })
+            });
+          } catch (e) {
+            console.log("Feedback submit err:", e);
+          }
+        }
       });
     }
 
     const thumbDown = row.querySelector(".btn-thumb-down");
     if (thumbDown) {
-      thumbDown.addEventListener("click", () => {
+      thumbDown.addEventListener("click", async () => {
         thumbDown.classList.toggle("active");
         showToast("Feedback recorded");
+        if (meta && meta.assistant_message_id) {
+          try {
+            await fetch(`${API_BASE}/api/chat/feedback`, {
+              method: "POST",
+              headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message_id: meta.assistant_message_id,
+                rating: 1,
+                category: "ACCURACY",
+                feedback_text: "User indicated issue with answer"
+              })
+            });
+          } catch (e) {
+            console.log("Feedback submit err:", e);
+          }
+        }
       });
     }
   }
@@ -679,15 +770,27 @@ function renderMessage(role, content, meta = {}) {
   scrollChatToBottom();
 }
 
+let activeChatAbortController = null;
+
 async function sendChatMessage(queryText) {
   const query = (queryText || DOM.chatTextarea.value).trim();
   if (!query) return;
+
+  // Cleanly abort any prior in-flight request without error
+  if (activeChatAbortController) {
+    activeChatAbortController.abort();
+  }
+  activeChatAbortController = new AbortController();
 
   // Render User Message in stream
   renderMessage("user", query);
   DOM.chatTextarea.value = "";
   DOM.chatTextarea.style.height = "24px";
-  DOM.btnSend.disabled = true;
+
+  // Toggle Send button to Stop Generation button
+  DOM.btnSend.disabled = false;
+  DOM.btnSend.innerHTML = `<i class="fa-solid fa-square" style="font-size:12px;"></i>`;
+  DOM.btnSend.setAttribute("title", "Stop generation");
 
   // Render Loading Placeholder
   const loadingRow = document.createElement("div");
@@ -709,13 +812,14 @@ async function sendChatMessage(queryText) {
   scrollChatToBottom();
 
   try {
-    const res = await fetch(`${API_BASE}/api/chat`, {
+    const res = await authenticatedFetch(`${API_BASE}/api/chat`, {
       method: "POST",
-      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         conversation_id: state.currentConversationId,
         query: query
-      })
+      }),
+      signal: activeChatAbortController.signal
     });
 
     // Remove loading placeholder
@@ -723,8 +827,12 @@ async function sendChatMessage(queryText) {
     if (loader) loader.remove();
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Error querying knowledge base");
+      let errMsg = "Error querying knowledge base";
+      try {
+        const errJson = await res.json();
+        errMsg = errJson.detail || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
     }
 
     const data = await res.json();
@@ -736,7 +844,8 @@ async function sendChatMessage(queryText) {
       source_type: data.source_type,
       confidence: data.confidence,
       citations: data.citations,
-      ambiguity_flags: data.ambiguity_flags
+      ambiguity_flags: data.ambiguity_flags,
+      assistant_message_id: data.assistant_message_id
     });
 
     if (state.autoTts) {
@@ -748,10 +857,18 @@ async function sendChatMessage(queryText) {
     const loader = document.getElementById("assistant-loading-indicator");
     if (loader) loader.remove();
 
-    renderMessage("assistant", "Something went wrong while processing your request. Please try again.", {
+    if (err.name === "AbortError") {
+      // User cancelled execution cleanly — do not render error bubble
+      return;
+    }
+
+    renderMessage("assistant", err.message || "Something went wrong while processing your request. Please try again.", {
       source_type: "NO_SUPPORTED_SOURCE"
     });
   } finally {
+    activeChatAbortController = null;
+    DOM.btnSend.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 4L12 20M12 4L6 10M12 4L18 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    DOM.btnSend.setAttribute("title", "Send message");
     DOM.btnSend.disabled = !DOM.chatTextarea.value.trim();
   }
 }
@@ -869,7 +986,7 @@ function speakText(text) {
 
 async function loadAdminDocuments() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/documents`, { headers: getAuthHeader() });
+    const res = await authenticatedFetch(`${API_BASE}/api/admin/documents`);
     if (!res.ok) throw new Error("Failed to load documents");
     const docs = await res.json();
     DOM.kbDocCount.textContent = docs.length;
@@ -927,9 +1044,8 @@ async function uploadDocument() {
   DOM.btnSubmitUpload.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Ingesting...`;
 
   try {
-    const res = await fetch(`${API_BASE}/api/admin/documents/upload`, {
+    const res = await authenticatedFetch(`${API_BASE}/api/admin/documents/upload`, {
       method: "POST",
-      headers: getAuthHeader(),
       body: formData
     });
     if (!res.ok) {
@@ -952,9 +1068,8 @@ async function uploadDocument() {
 async function deleteDocument(docId) {
   if (confirm("Delete this document and rebuild vector indexes?")) {
     try {
-      const res = await fetch(`${API_BASE}/api/admin/documents/${docId}`, {
-        method: "DELETE",
-        headers: getAuthHeader()
+      const res = await authenticatedFetch(`${API_BASE}/api/admin/documents/${docId}`, {
+        method: "DELETE"
       });
       if (res.ok) {
         showToast("Document deleted");
@@ -970,9 +1085,8 @@ async function triggerReindex() {
   try {
     DOM.btnReindexAll.disabled = true;
     DOM.btnReindexAll.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Re-indexing...`;
-    const res = await fetch(`${API_BASE}/api/admin/reindex`, {
-      method: "POST",
-      headers: getAuthHeader()
+    const res = await authenticatedFetch(`${API_BASE}/api/admin/reindex`, {
+      method: "POST"
     });
     if (res.ok) {
       const data = await res.json();
@@ -1002,25 +1116,33 @@ function escapeHtml(str) {
 
 function initEventListeners() {
   // Sidebar Collapse & Expand
-  DOM.btnSidebarCollapse.addEventListener("click", () => {
-    DOM.sidebar.classList.add("collapsed");
-    DOM.btnSidebarExpand.classList.remove("hidden");
-  });
+  if (DOM.btnSidebarCollapse) {
+    DOM.btnSidebarCollapse.addEventListener("click", () => {
+      if (DOM.sidebar) DOM.sidebar.classList.add("collapsed");
+      if (DOM.btnSidebarExpand) DOM.btnSidebarExpand.classList.remove("hidden");
+    });
+  }
 
-  DOM.btnSidebarExpand.addEventListener("click", () => {
-    DOM.sidebar.classList.remove("collapsed");
-    DOM.btnSidebarExpand.classList.add("hidden");
-  });
+  if (DOM.btnSidebarExpand) {
+    DOM.btnSidebarExpand.addEventListener("click", () => {
+      if (DOM.sidebar) DOM.sidebar.classList.remove("collapsed");
+      if (DOM.btnSidebarExpand) DOM.btnSidebarExpand.classList.add("hidden");
+    });
+  }
 
-  DOM.btnMobileSidebar.addEventListener("click", () => {
-    DOM.sidebar.classList.toggle("collapsed");
-  });
+  if (DOM.btnMobileSidebar) {
+    DOM.btnMobileSidebar.addEventListener("click", () => {
+      if (DOM.sidebar) DOM.sidebar.classList.toggle("collapsed");
+    });
+  }
 
   // Model Selector Dropdown
-  DOM.btnModelSelector.addEventListener("click", (e) => {
-    e.stopPropagation();
-    DOM.modelDropdownMenu.classList.toggle("hidden");
-  });
+  if (DOM.btnModelSelector) {
+    DOM.btnModelSelector.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (DOM.modelDropdownMenu) DOM.modelDropdownMenu.classList.toggle("hidden");
+    });
+  }
 
   document.addEventListener("click", (e) => {
     if (DOM.modelDropdownMenu && !DOM.modelDropdownMenu.contains(e.target) && e.target !== DOM.btnModelSelector) {
@@ -1029,20 +1151,26 @@ function initEventListeners() {
   });
 
   // New Chat
-  DOM.btnNewChat.addEventListener("click", () => {
-    state.currentConversationId = null;
-    DOM.messagesStream.innerHTML = "";
-    DOM.messagesStream.appendChild(DOM.welcomeHero);
-    DOM.welcomeHero.classList.remove("hidden");
-    renderConversationList(state.conversations);
-  });
+  if (DOM.btnNewChat) {
+    DOM.btnNewChat.addEventListener("click", () => {
+      if (activeChatAbortController) {
+        activeChatAbortController.abort();
+        activeChatAbortController = null;
+      }
+      state.currentConversationId = null;
+      if (DOM.messagesStream && DOM.welcomeHero) {
+        DOM.messagesStream.innerHTML = "";
+        DOM.messagesStream.appendChild(DOM.welcomeHero);
+        DOM.welcomeHero.classList.remove("hidden");
+      }
+      renderConversationList(state.conversations);
+    });
+  }
 
   // Explore KB / Directives shortcut
   if (DOM.btnExploreKb) {
     DOM.btnExploreKb.addEventListener("click", () => {
-      DOM.chatTextarea.value = "What official RBI Master Directions and IDFC Bank policies are available in the knowledge base?";
-      DOM.btnSend.disabled = false;
-      sendChatMessage();
+      sendChatMessage("List all approved RBI Master Directions and IDFC FIRST Bank policy circulars in the knowledge base");
     });
   }
 
@@ -1059,41 +1187,52 @@ function initEventListeners() {
   renderPromptCards("all");
 
   // Conversation Search
-  let searchTimer;
-  DOM.conversationSearch.addEventListener("input", (e) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      const q = e.target.value.trim();
-      loadConversations(q.length > 0 ? q : null);
-    }, 250);
-  });
+  if (DOM.conversationSearch) {
+    let searchTimer;
+    DOM.conversationSearch.addEventListener("input", (e) => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        const q = e.target.value.trim();
+        loadConversations(q.length > 0 ? q : null);
+      }, 250);
+    });
+  }
 
   // Chat Form Submit & Keydown
-  DOM.chatForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    sendChatMessage();
-  });
-
-  DOM.chatTextarea.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+  if (DOM.chatForm) {
+    DOM.chatForm.addEventListener("submit", (e) => {
       e.preventDefault();
+      if (activeChatAbortController) {
+        activeChatAbortController.abort();
+        activeChatAbortController = null;
+        return;
+      }
       sendChatMessage();
-    }
-  });
+    });
+  }
 
-  // Auto-resize textarea & enable send button
-  DOM.chatTextarea.addEventListener("input", () => {
-    DOM.chatTextarea.style.height = "auto";
-    DOM.chatTextarea.style.height = Math.min(DOM.chatTextarea.scrollHeight, 180) + "px";
-    DOM.btnSend.disabled = !DOM.chatTextarea.value.trim();
-  });
+  if (DOM.chatTextarea) {
+    DOM.chatTextarea.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+
+    // Auto-resize textarea & enable send button
+    DOM.chatTextarea.addEventListener("input", () => {
+      DOM.chatTextarea.style.height = "auto";
+      DOM.chatTextarea.style.height = Math.min(DOM.chatTextarea.scrollHeight, 180) + "px";
+      if (DOM.btnSend) DOM.btnSend.disabled = !DOM.chatTextarea.value.trim();
+    });
+  }
 
   // Attach File Button (opens KB modal for Admin)
   if (DOM.btnAttachFile) {
     DOM.btnAttachFile.addEventListener("click", () => {
       const account = getActiveAccount();
       if (account && account.role === "admin") {
-        DOM.adminKbModal.classList.remove("hidden");
+        if (DOM.adminKbModal) DOM.adminKbModal.classList.remove("hidden");
         loadAdminDocuments();
       } else {
         alert("Document ingestion is enabled for Admin accounts. Please sign in with an Admin account or use the Quick Admin Login.");
@@ -1102,55 +1241,69 @@ function initEventListeners() {
   }
 
   // Mic Button
-  DOM.btnMic.addEventListener("click", toggleSpeechRecognition);
+  if (DOM.btnMic) {
+    DOM.btnMic.addEventListener("click", toggleSpeechRecognition);
+  }
 
   // Speech Review Bar Actions
-  DOM.btnConfirmSpeech.addEventListener("click", () => {
-    const text = DOM.speechTranscriptInput.value.trim();
-    if (text) {
-      DOM.chatTextarea.value = text;
-      DOM.btnSend.disabled = false;
-      DOM.speechReviewBar.classList.add("hidden");
-      sendChatMessage(text);
-    }
-  });
+  if (DOM.btnConfirmSpeech) {
+    DOM.btnConfirmSpeech.addEventListener("click", () => {
+      const text = DOM.speechTranscriptInput ? DOM.speechTranscriptInput.value.trim() : "";
+      if (text) {
+        if (DOM.chatTextarea) DOM.chatTextarea.value = text;
+        if (DOM.btnSend) DOM.btnSend.disabled = false;
+        if (DOM.speechReviewBar) DOM.speechReviewBar.classList.add("hidden");
+        sendChatMessage(text);
+      }
+    });
+  }
 
-  DOM.btnCancelSpeech.addEventListener("click", () => {
-    DOM.speechReviewBar.classList.add("hidden");
-  });
+  if (DOM.btnCancelSpeech) {
+    DOM.btnCancelSpeech.addEventListener("click", () => {
+      if (DOM.speechReviewBar) DOM.speechReviewBar.classList.add("hidden");
+    });
+  }
 
   // Theme Toggle
-  DOM.btnThemeToggle.addEventListener("click", () => {
-    document.body.classList.toggle("light-theme");
-    const isLight = document.body.classList.contains("light-theme");
-    DOM.btnThemeToggle.innerHTML = isLight 
-      ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`
-      : `<svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
-    showToast(isLight ? "Light theme enabled" : "Dark theme enabled");
-  });
+  if (DOM.btnThemeToggle) {
+    DOM.btnThemeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("light-theme");
+      const isLight = document.body.classList.contains("light-theme");
+      DOM.btnThemeToggle.innerHTML = isLight 
+        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`
+        : `<svg class="sun-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
+      showToast(isLight ? "Light theme enabled" : "Dark theme enabled");
+    });
+  }
 
   // Auth Modal & Trigger
-  DOM.btnAuthTrigger.addEventListener("click", () => {
-    const active = getActiveAccount();
-    if (active) {
-      DOM.accountDrawer.classList.remove("hidden");
-    } else {
-      DOM.authModal.classList.remove("hidden");
-    }
-  });
+  if (DOM.btnAuthTrigger) {
+    DOM.btnAuthTrigger.addEventListener("click", () => {
+      const active = getActiveAccount();
+      if (active) {
+        if (DOM.accountDrawer) DOM.accountDrawer.classList.remove("hidden");
+      } else {
+        if (DOM.authModal) DOM.authModal.classList.remove("hidden");
+      }
+    });
+  }
 
-  DOM.userProfileWidget.addEventListener("click", () => {
-    DOM.accountDrawer.classList.remove("hidden");
-  });
+  if (DOM.userProfileWidget) {
+    DOM.userProfileWidget.addEventListener("click", () => {
+      if (DOM.accountDrawer) DOM.accountDrawer.classList.remove("hidden");
+    });
+  }
 
-  DOM.btnAuthToggleMode.addEventListener("click", () => {
-    state.isAuthModeRegister = !state.isAuthModeRegister;
-    DOM.authNameGroup.classList.toggle("hidden", !state.isAuthModeRegister);
-    DOM.authModalTitle.textContent = state.isAuthModeRegister ? "Create your account" : "Welcome back";
-    DOM.btnAuthSubmit.textContent = state.isAuthModeRegister ? "Sign up" : "Continue";
-    DOM.authTogglePrompt.textContent = state.isAuthModeRegister ? "Already have an account?" : "Don't have an account?";
-    DOM.btnAuthToggleMode.textContent = state.isAuthModeRegister ? "Log in" : "Sign up";
-  });
+  if (DOM.btnAuthToggleMode) {
+    DOM.btnAuthToggleMode.addEventListener("click", () => {
+      state.isAuthModeRegister = !state.isAuthModeRegister;
+      if (DOM.authNameGroup) DOM.authNameGroup.classList.toggle("hidden", !state.isAuthModeRegister);
+      if (DOM.authModalTitle) DOM.authModalTitle.textContent = state.isAuthModeRegister ? "Create your account" : "Welcome back";
+      if (DOM.btnAuthSubmit) DOM.btnAuthSubmit.textContent = state.isAuthModeRegister ? "Sign up" : "Continue";
+      if (DOM.authTogglePrompt) DOM.authTogglePrompt.textContent = state.isAuthModeRegister ? "Already have an account?" : "Don't have an account?";
+      DOM.btnAuthToggleMode.textContent = state.isAuthModeRegister ? "Log in" : "Sign up";
+    });
+  }
 
   // Demo Login Buttons
   if (DOM.btnQuickCustomer) {
@@ -1165,73 +1318,105 @@ function initEventListeners() {
     });
   }
 
-  DOM.authForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const email = DOM.authEmailInput.value.trim();
-    const password = DOM.authPasswordInput.value;
-    if (state.isAuthModeRegister) {
-      const name = DOM.authNameInput.value.trim() || email.split("@")[0];
-      registerUser(name, email, password);
-    } else {
-      loginUser(email, password);
-    }
-  });
+  if (DOM.authForm) {
+    DOM.authForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = DOM.authEmailInput ? DOM.authEmailInput.value.trim() : "";
+      const password = DOM.authPasswordInput ? DOM.authPasswordInput.value : "";
+      if (state.isAuthModeRegister) {
+        const name = (DOM.authNameInput ? DOM.authNameInput.value.trim() : "") || email.split("@")[0];
+        registerUser(name, email, password);
+      } else {
+        loginUser(email, password);
+      }
+    });
+  }
 
-  DOM.btnGoogleLogin.addEventListener("click", () => googleLogin());
+  if (DOM.btnGoogleLogin) {
+    DOM.btnGoogleLogin.addEventListener("click", () => googleLogin());
+  }
 
   // Account Drawer Actions
-  DOM.btnAddAccount.addEventListener("click", () => {
-    DOM.accountDrawer.classList.add("hidden");
-    state.isAuthModeRegister = false;
-    DOM.authNameGroup.classList.add("hidden");
-    DOM.authModal.classList.remove("hidden");
-  });
+  if (DOM.btnAddAccount) {
+    DOM.btnAddAccount.addEventListener("click", () => {
+      if (DOM.accountDrawer) DOM.accountDrawer.classList.add("hidden");
+      state.isAuthModeRegister = false;
+      if (DOM.authNameGroup) DOM.authNameGroup.classList.add("hidden");
+      if (DOM.authModal) DOM.authModal.classList.remove("hidden");
+    });
+  }
 
-  DOM.btnLogoutCurrent.addEventListener("click", logoutCurrentAccount);
+  if (DOM.btnLogoutCurrent) {
+    DOM.btnLogoutCurrent.addEventListener("click", logoutCurrentAccount);
+  }
 
   // Admin KB Actions
-  DOM.btnOpenAdminKb.addEventListener("click", () => {
-    DOM.adminKbModal.classList.remove("hidden");
-    loadAdminDocuments();
-  });
+  if (DOM.btnOpenAdminKb) {
+    DOM.btnOpenAdminKb.addEventListener("click", () => {
+      if (DOM.adminKbModal) DOM.adminKbModal.classList.remove("hidden");
+      loadAdminDocuments();
+    });
+  }
 
-  DOM.btnReindexAll.addEventListener("click", triggerReindex);
+  if (DOM.btnReindexAll) {
+    DOM.btnReindexAll.addEventListener("click", triggerReindex);
+  }
 
   // File Upload Handlers
-  DOM.btnBrowseFile.addEventListener("click", () => DOM.kbFileInput.click());
-  DOM.uploadDropzone.addEventListener("click", () => DOM.kbFileInput.click());
+  if (DOM.btnBrowseFile && DOM.kbFileInput) {
+    DOM.btnBrowseFile.addEventListener("click", () => DOM.kbFileInput.click());
+  }
+  if (DOM.uploadDropzone && DOM.kbFileInput) {
+    DOM.uploadDropzone.addEventListener("click", () => DOM.kbFileInput.click());
+  }
 
-  DOM.kbFileInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      state.selectedUploadFile = file;
-      DOM.docTitleInput.value = file.name.replace("_", " ").rsplit ? file.name : file.name;
-      DOM.kbUploadForm.classList.remove("hidden");
-    }
-  });
+  if (DOM.kbFileInput) {
+    DOM.kbFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        state.selectedUploadFile = file;
+        if (DOM.docTitleInput) DOM.docTitleInput.value = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+        if (DOM.kbUploadForm) DOM.kbUploadForm.classList.remove("hidden");
+      }
+    });
+  }
 
-  DOM.kbUploadForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    uploadDocument();
-  });
+  if (DOM.kbUploadForm) {
+    DOM.kbUploadForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      uploadDocument();
+    });
+  }
 
-  DOM.btnCancelUpload.addEventListener("click", () => {
-    DOM.kbUploadForm.reset();
-    DOM.kbUploadForm.classList.add("hidden");
-    state.selectedUploadFile = null;
-  });
+  if (DOM.btnCancelUpload) {
+    DOM.btnCancelUpload.addEventListener("click", () => {
+      if (DOM.kbUploadForm) {
+        DOM.kbUploadForm.reset();
+        DOM.kbUploadForm.classList.add("hidden");
+      }
+      state.selectedUploadFile = null;
+    });
+  }
 
   // Settings Modal
-  DOM.btnOpenSettings.addEventListener("click", () => DOM.settingsModal.classList.remove("hidden"));
-  DOM.settingSttReview.addEventListener("change", (e) => {
-    state.sttReview = e.target.checked;
-    showToast("Voice settings updated");
-  });
-  DOM.settingAutoTts.addEventListener("change", (e) => {
-    state.autoTts = e.target.checked;
-    showToast("Auto Read-Aloud updated");
-  });
-  DOM.settingTtsRate.addEventListener("input", (e) => state.ttsRate = parseFloat(e.target.value));
+  if (DOM.btnOpenSettings && DOM.settingsModal) {
+    DOM.btnOpenSettings.addEventListener("click", () => DOM.settingsModal.classList.remove("hidden"));
+  }
+  if (DOM.settingSttReview) {
+    DOM.settingSttReview.addEventListener("change", (e) => {
+      state.sttReview = e.target.checked;
+      showToast("Voice settings updated");
+    });
+  }
+  if (DOM.settingAutoTts) {
+    DOM.settingAutoTts.addEventListener("change", (e) => {
+      state.autoTts = e.target.checked;
+      showToast("Auto Read-Aloud updated");
+    });
+  }
+  if (DOM.settingTtsRate) {
+    DOM.settingTtsRate.addEventListener("input", (e) => state.ttsRate = parseFloat(e.target.value));
+  }
 
   // Modal Close Buttons
   document.querySelectorAll(".modal-close-btn").forEach(btn => {
@@ -1245,35 +1430,18 @@ function initEventListeners() {
   });
 }
 
-// Initial Boot
-window.addEventListener("DOMContentLoaded", async () => {
+// Initial Boot Orchestrator
+async function bootApp() {
   loadAccountsFromStorage();
-  
-  // Seed demo customer account if storage is empty
-  if (state.accounts.length === 0) {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "customer@idfcbank.com", password: "Customer@123" })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        addAccount({
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-          token: data.access_token
-        });
-      }
-    } catch (e) {
-      console.log("Default client login init:", e);
-    }
-  }
-
+  await validateOrRefreshToken();
   updateUIForAuth();
   initEventListeners();
   initSpeechRecognition();
   await loadConversations();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootApp);
+} else {
+  bootApp();
+}

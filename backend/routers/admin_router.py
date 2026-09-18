@@ -18,7 +18,8 @@ ALLOWED_EXTENSIONS = {"pdf", "txt", "docx", "csv", "png", "jpg", "jpeg", "md"}
 MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024 # 25 MB
 
 def rebuild_vector_index(db: Session):
-    """Refreshes the in-memory hybrid vector store from all DB chunks."""
+    """Refreshes the in-memory hybrid vector store from all DB chunks and clears stale RAG cache."""
+    from backend.cache.redis_cache import redis_cache
     all_chunks = db.query(KnowledgeChunk).all()
     records = []
     for c in all_chunks:
@@ -36,6 +37,7 @@ def rebuild_vector_index(db: Session):
                 "publication_date": doc.publication_date
             })
     hybrid_vector_store.build_index(records)
+    redis_cache.flushall()
 
 @router.get("/documents", response_model=List[KnowledgeDocumentResponse])
 def list_documents(

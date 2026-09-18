@@ -119,3 +119,40 @@ def test_admin_document_inspection_and_reindex(client, auth_headers_admin):
     reindex_res = client.post("/api/admin/reindex", headers=auth_headers_admin)
     assert reindex_res.status_code == 200
     assert reindex_res.json()["total_chunks"] >= 1
+
+def test_acronym_alias_and_dotted_normalization():
+    from backend.rag.nlp_engine import nlp_engine
+    
+    # Dotted NEFT
+    res1 = nlp_engine.process_query("What are N.E.F.T. timings and limits?")
+    assert "NEFT" in res1["normalized_query"]
+    assert "NEFT" in res1["resolved_entities"]
+
+    # Dotted RTGS
+    res2 = nlp_engine.process_query("What is the minimum amount for R.T.G.S.?")
+    assert "RTGS" in res2["normalized_query"]
+    assert "RTGS" in res2["resolved_entities"]
+
+    # Spaced / Hyphenless V CIP
+    res3 = nlp_engine.process_query("How does VCIP work for KYC?")
+    assert "V-CIP" in res3["normalized_query"]
+    assert "V-CIP" in res3["resolved_entities"]
+
+    # Fast tag variation
+    res4 = nlp_engine.process_query("how fast tag is recharged")
+    assert "FASTag" in res4["normalized_query"]
+
+def test_security_headers_presence(client):
+    res = client.get("/api/health")
+    assert res.status_code == 200
+    assert res.headers.get("X-Content-Type-Options") == "nosniff"
+    assert res.headers.get("X-Frame-Options") == "DENY"
+    assert res.headers.get("X-XSS-Protection") == "1; mode=block"
+    assert res.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+    assert "microphone=(self)" in res.headers.get("Permissions-Policy", "")
+
+def test_schema_validation_empty_whitespace_rejection(client, auth_headers_user1):
+    # Empty query should be rejected by schema validation
+    res = client.post("/api/chat", json={"query": "   "}, headers=auth_headers_user1)
+    assert res.status_code == 422
+

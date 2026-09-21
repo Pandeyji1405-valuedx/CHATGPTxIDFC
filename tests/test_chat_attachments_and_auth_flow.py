@@ -80,3 +80,32 @@ def test_greeting_query_includes_user_name(client, auth_headers_user1):
     data = res.json()
     assert data["source_type"] == "CONVERSATIONAL"
     assert "customer" in data["answer"].lower() or "shubham" in data["answer"].lower() or "devesh" in data["answer"].lower()
+
+def test_chat_attachment_docx_and_null_byte_sanitization(client, auth_headers_user1):
+    # Simulate docx binary with null bytes and content
+    file_content = b"PK\x03\x04\x00\x00\x00Cloud Midterm Exam Notes: Distributed computing resilience and failover SLAs.\x00\x00"
+    file_obj = io.BytesIO(file_content)
+
+    upload_res = client.post(
+        "/api/chat/upload-attachment",
+        files={"file": ("cloud_midterm.docx", file_obj, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        headers=auth_headers_user1
+    )
+    assert upload_res.status_code == 200
+    att = upload_res.json()["attachment"]
+    assert att["filename"] == "cloud_midterm.docx"
+    assert "\x00" not in att["extracted_text"]
+
+    # Post chat query with this docx attachment
+    chat_res = client.post(
+        "/api/chat",
+        json={
+            "query": "Explain the failover SLAs mentioned in this doc",
+            "attachment": att
+        },
+        headers=auth_headers_user1
+    )
+    assert chat_res.status_code == 200
+    chat_data = chat_res.json()
+    assert chat_data["source_type"] == "ATTACHMENT_ANALYSIS"
+    assert "\x00" not in chat_data["answer"]

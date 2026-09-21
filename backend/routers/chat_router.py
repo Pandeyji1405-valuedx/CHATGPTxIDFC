@@ -3,6 +3,7 @@ import uuid
 import json
 import re
 from datetime import datetime
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from backend.database import get_db
@@ -138,14 +139,17 @@ def handle_chat_query(
         conversation.updated_at = get_utc_now()
         db.commit()
 
+    def clean_str(s: Optional[str]) -> str:
+        return (s or "").replace("\x00", "").strip()
+
     # 4. Save User Message
     user_msg = Message(
         conversation_id=conversation.id,
         user_id=current_user.id,
         tenant_id=getattr(current_user, "tenant_id", "default_tenant"),
         role="user",
-        original_content=rag_result["original_query"],
-        normalized_content=rag_result["normalized_query"]
+        original_content=clean_str(rag_result["original_query"]),
+        normalized_content=clean_str(rag_result["normalized_query"])
     )
     db.add(user_msg)
     db.commit()
@@ -156,8 +160,8 @@ def handle_chat_query(
         ent_record = Entity(
             message_id=user_msg.id,
             entity_type="RESOLVED_ENTITY",
-            entity_value=ent,
-            canonical_value=ent
+            entity_value=clean_str(ent),
+            canonical_value=clean_str(ent)
         )
         db.add(ent_record)
 
@@ -167,8 +171,8 @@ def handle_chat_query(
         user_id=current_user.id,
         tenant_id=getattr(current_user, "tenant_id", "default_tenant"),
         role="assistant",
-        original_content=rag_result["answer"],
-        normalized_content=rag_result["answer"]
+        original_content=clean_str(rag_result["answer"]),
+        normalized_content=clean_str(rag_result["answer"])
     )
     db.add(assistant_msg)
     db.commit()

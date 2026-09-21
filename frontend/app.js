@@ -759,20 +759,22 @@ async function uploadChatAttachment(file) {
     }
 
     const data = await res.json();
-    state.selectedChatAttachment = data.attachment;
+    state.selectedChatAttachment = data.attachment || data;
 
-    const iconClass = getFileIconClass(data.attachment.file_type);
+    const iconClass = getFileIconClass(state.selectedChatAttachment.file_type);
     if (DOM.attachmentIconContainer) {
       DOM.attachmentIconContainer.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
     }
     if (DOM.attachmentPillName) {
-      DOM.attachmentPillName.textContent = data.attachment.original_name;
+      DOM.attachmentPillName.textContent = state.selectedChatAttachment.original_name || state.selectedChatAttachment.filename;
     }
+    const attSize = state.selectedChatAttachment.size_bytes || state.selectedChatAttachment.file_size || file.size || 0;
+    const charCount = state.selectedChatAttachment.extracted_text ? state.selectedChatAttachment.extracted_text.length : 0;
     if (DOM.attachmentPillSize) {
-      DOM.attachmentPillSize.textContent = `${formatBytes(data.attachment.size_bytes)} • ${data.attachment.char_count} chars extracted`;
+      DOM.attachmentPillSize.textContent = `${formatBytes(attSize)} • ${charCount} chars extracted`;
     }
 
-    showToast(`Attached ${data.attachment.original_name}`);
+    showToast(`Attached ${state.selectedChatAttachment.original_name || state.selectedChatAttachment.filename}`);
     if (DOM.btnSend) DOM.btnSend.disabled = false;
   } catch (err) {
     console.error("Chat attachment upload error:", err);
@@ -811,12 +813,13 @@ function renderMessage(role, content, meta = {}) {
     if (meta.attachment) {
       const att = meta.attachment;
       const iconClass = getFileIconClass(att.file_type);
+      const attSize = att.size_bytes || att.file_size || 0;
       attachmentHtml = `
         <div class="message-attached-file">
           <div class="message-attached-icon"><i class="fa-solid ${iconClass}"></i></div>
           <div>
             <div class="message-attached-name">${escapeHtml(att.original_name || att.filename)}</div>
-            <div class="message-attached-type">${escapeHtml(att.file_type || "file")} • ${formatBytes(att.size_bytes)}</div>
+            <div class="message-attached-type">${escapeHtml(att.file_type || "file")} • ${formatBytes(attSize)}</div>
           </div>
         </div>
       `;

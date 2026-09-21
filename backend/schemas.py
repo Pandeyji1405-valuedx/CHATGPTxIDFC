@@ -140,13 +140,20 @@ class ChatAttachmentInfo(BaseModel):
     original_name: Optional[str] = None
     file_type: str
     file_size: Optional[int] = None
+    size_bytes: Optional[int] = None
     extracted_text: Optional[str] = None
     file_url: Optional[str] = None
 
     @model_validator(mode="after")
-    def populate_original_name(self) -> "ChatAttachmentInfo":
+    def sanitize_and_populate(self) -> "ChatAttachmentInfo":
         if not self.original_name:
             self.original_name = self.filename
+        if self.file_size is not None and self.size_bytes is None:
+            self.size_bytes = self.file_size
+        elif self.size_bytes is not None and self.file_size is None:
+            self.file_size = self.size_bytes
+        if self.extracted_text:
+            self.extracted_text = self.extracted_text.replace("\x00", "").strip()
         return self
 
 class ChatAttachmentUploadResponse(BaseModel):

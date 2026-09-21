@@ -146,14 +146,33 @@ class DocumentExtractor:
         }
 
     def extract_from_docx(self, file_bytes: bytes, filename: str) -> Dict[str, Any]:
-        """Extracts text from DOCX files."""
+        """Extracts text from DOCX files using python-docx with built-in zipfile/XML parser."""
+        text_content = ""
         try:
             import docx
             doc = docx.Document(io.BytesIO(file_bytes))
             fullText = [para.text for para in doc.paragraphs if para.text.strip()]
-            text_content = "\n\n".join(fullText) or f"[Document content from {filename}]"
+            text_content = "\n\n".join(fullText)
         except Exception:
-            text_content = file_bytes.decode("utf-8", errors="ignore")
+            pass
+
+        if not text_content:
+            try:
+                import zipfile
+                import xml.etree.ElementTree as ET
+                with zipfile.ZipFile(io.BytesIO(file_bytes)) as zf:
+                    xml_content = zf.read("word/document.xml")
+                    tree = ET.fromstring(xml_content)
+                    namespaces = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+                    texts = [node.text for node in tree.iterfind(".//w:t", namespaces) if node.text]
+                    text_content = "\n".join(texts)
+            except Exception:
+                try:
+                    text_content = file_bytes.decode("utf-8", errors="ignore").replace("\x00", "")
+                except Exception:
+                    text_content = f"[Document content from {filename}]"
+
+        text_content = text_content.replace("\x00", "").strip() or f"[Document content from {filename}]"
 
         return {
             "page_count": 1,
@@ -191,7 +210,7 @@ class DocumentExtractor:
 
         result["checksum"] = checksum
         result["filename"] = filename
-        result["full_text"] = "\n\n".join(p.get("text", "") for p in result.get("pages", []))
+        result["full_text"] = "\n\n".join(p.get("text", "") for p in result.get("pages", [])).replace("\x00", "").strip()
         result["title"] = filename.rsplit(".", 1)[0].replace("_", " ")
         return result
 

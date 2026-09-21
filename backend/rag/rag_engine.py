@@ -256,8 +256,8 @@ class TwoLayerRAGEngine:
             source_org = primary_chunk.get("source", "RBI")
             chunk_text = primary_chunk.get("chunk_text", "")
 
-            # Aggregate top matching evidence chunks ranked by hybrid search
-            matching_chunks = kb_chunks[:4]
+            # Aggregate top matching evidence chunks ranked by hybrid search across all matching documents
+            matching_chunks = kb_chunks[:6]
 
             # 0. User Attachment In-Depth Examination
             if primary_chunk.get("source") == "USER_ATTACHMENT":

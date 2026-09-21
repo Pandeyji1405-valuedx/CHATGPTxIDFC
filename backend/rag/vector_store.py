@@ -209,8 +209,11 @@ class HybridVectorStore:
 
             # 2. Regulator Filter Check
             chunk_reg = chunk.get("regulator", "RBI").upper()
-            if normalized_reg_filter and chunk_reg not in normalized_reg_filter:
-                continue
+            chunk_src = chunk.get("source", "").upper()
+            if normalized_reg_filter:
+                is_internal_match = any(r in ["INTERNAL", "BANK_POLICY", "IDFC_FIRST_BANK"] for r in normalized_reg_filter) and (chunk_reg in ["INTERNAL", "BANK_POLICY", "IDFC_FIRST_BANK"] or "IDFC" in chunk_src)
+                if chunk_reg not in normalized_reg_filter and chunk_src not in normalized_reg_filter and not is_internal_match:
+                    continue
 
             # 3. Effective-Date & Status Resolution
             chunk_status = chunk.get("status", "active").lower()
@@ -255,8 +258,25 @@ class HybridVectorStore:
                     "publication_date": chunk.get("publication_date")
                 })
 
-        # Sort descending by final score
+        # Sort descending by final score with multi-document diversity
         scored_results.sort(key=lambda x: x["score"], reverse=True)
-        return scored_results[:top_k]
+
+        diverse_results = []
+        doc_chunk_count: Dict[str, int] = {}
+        deferred = []
+
+        for res in scored_results:
+            doc_key = str(res.get("document_id") or res.get("doc_title"))
+            count = doc_chunk_count.get(doc_key, 0)
+            if count < 2:
+                diverse_results.append(res)
+                doc_chunk_count[doc_key] = count + 1
+            else:
+                deferred.append(res)
+
+        if len(diverse_results) < top_k:
+            diverse_results.extend(deferred[:top_k - len(diverse_results)])
+
+        return diverse_results[:top_k]
 
 hybrid_vector_store = HybridVectorStore()

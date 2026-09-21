@@ -626,8 +626,10 @@ class NLPEngine:
             regulators.append("IRDAI")
         if re.search(r"\b(RBI|RESERVE BANK|BANKING OMBUDSMAN|V-CIP|NEFT|RTGS|DIGITAL LENDING)\b", query_upper):
             regulators.append("RBI")
-        if re.search(r"\b(INTERNAL|IDFC POLICY|BANK POLICY|SOP)\b", query_upper):
+        if re.search(r"\b(INTERNAL|IDFC|IDFC FIRST|IDFC BANK|BANK POLICY|SOP)\b", query_upper):
             regulators.append("INTERNAL")
+            regulators.append("IDFC_FIRST_BANK")
+            regulators.append("BANK_POLICY")
 
         # Temporal detection
         as_of_date = None

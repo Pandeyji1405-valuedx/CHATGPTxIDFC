@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # RAG Tuning Parameters
     RETRIEVAL_THRESHOLD: float = 0.20
-    TOP_K_CHUNKS: int = 4
+    TOP_K_CHUNKS: int = 6
     CHUNK_SIZE: int = 600
     CHUNK_OVERLAP: int = 100
     MAX_HISTORY_MESSAGES: int = 10

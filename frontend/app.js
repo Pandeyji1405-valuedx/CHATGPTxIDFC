@@ -301,7 +301,9 @@ async function authenticatedFetch(url, options = {}) {
 
 function updateUIForAuth() {
   const active = getActiveAccount();
-  if (active) {
+  const isSessionAuth = sessionStorage.getItem("chatgptxidfc_session_authenticated") === "true";
+
+  if (active && isSessionAuth) {
     hideLandingAuth();
     if (DOM.authBtnLabel) DOM.authBtnLabel.textContent = "Switch Account";
     if (DOM.userDisplayName) DOM.userDisplayName.textContent = active.name;
@@ -314,9 +316,12 @@ function updateUIForAuth() {
   } else {
     showLandingAuth();
     if (DOM.authBtnLabel) DOM.authBtnLabel.textContent = "Log in";
-    if (DOM.userDisplayName) DOM.userDisplayName.textContent = "Guest User";
-    if (DOM.userAvatarPlaceholder) DOM.userAvatarPlaceholder.innerHTML = `<span>G</span>`;
+    if (DOM.userDisplayName) DOM.userDisplayName.textContent = active ? active.name : "Guest User";
+    if (DOM.userAvatarPlaceholder) DOM.userAvatarPlaceholder.innerHTML = `<span>${active ? active.name.charAt(0).toUpperCase() : 'G'}</span>`;
     if (DOM.adminKbBtnContainer) DOM.adminKbBtnContainer.classList.add("hidden");
+    if (active && DOM.landingEmailInput && !DOM.landingEmailInput.value) {
+      DOM.landingEmailInput.value = active.email;
+    }
   }
   renderSavedAccountsList();
 }
@@ -366,6 +371,9 @@ async function switchAccount(idx) {
     saveAccountsToStorage();
     const target = state.accounts[idx];
 
+    // Mark active session authenticated
+    sessionStorage.setItem("chatgptxidfc_session_authenticated", "true");
+
     // Refresh JWT session on backend for target account
     try {
       const res = await fetch(`${API_BASE}/api/auth/switch-account`, {
@@ -385,6 +393,7 @@ async function switchAccount(idx) {
     }
 
     updateUIForAuth();
+    hideLandingAuth();
     showToast(`Switched to ${target.name}`);
     state.currentConversationId = null;
     await loadConversations();
@@ -395,6 +404,7 @@ async function switchAccount(idx) {
 }
 
 function logoutCurrentAccount() {
+  sessionStorage.removeItem("chatgptxidfc_session_authenticated");
   if (state.accounts.length > 0) {
     const removed = state.accounts.splice(state.activeAccountIndex, 1);
     state.activeAccountIndex = Math.max(0, state.accounts.length - 1);
@@ -407,9 +417,8 @@ function logoutCurrentAccount() {
     DOM.messagesStream.appendChild(DOM.welcomeHero);
     DOM.welcomeHero.classList.remove("hidden");
     if (DOM.accountDrawer) DOM.accountDrawer.classList.add("hidden");
-  } else {
-    showLandingAuth();
   }
+  showLandingAuth();
 }
 
 async function loginUser(email, password) {
@@ -443,6 +452,7 @@ async function loginUser(email, password) {
       throw new Error(errMsg);
     }
     const data = await res.json();
+    sessionStorage.setItem("chatgptxidfc_session_authenticated", "true");
     addAccount({
       id: data.user.id,
       name: data.user.name,
@@ -472,6 +482,7 @@ async function registerUser(name, email, password) {
       throw new Error(err.detail || "Registration failed");
     }
     const data = await res.json();
+    sessionStorage.setItem("chatgptxidfc_session_authenticated", "true");
     addAccount({
       id: data.user.id,
       name: data.user.name,
@@ -502,6 +513,7 @@ async function googleLogin(email = "devesh.pandey1405@gmail.com", name = "devesh
     });
     if (!res.ok) throw new Error("Google SSO authentication failed");
     const data = await res.json();
+    sessionStorage.setItem("chatgptxidfc_session_authenticated", "true");
     addAccount({
       id: data.user.id,
       name: data.user.name,
@@ -1900,12 +1912,19 @@ function initEventListeners() {
 // Initial Boot Orchestrator
 async function bootApp() {
   loadAccountsFromStorage();
-  const token = await validateOrRefreshToken();
-  updateUIForAuth();
   initEventListeners();
   initSpeechRecognition();
-  if (token) {
-    await loadConversations();
+
+  const isSessionAuth = sessionStorage.getItem("chatgptxidfc_session_authenticated") === "true";
+  if (isSessionAuth) {
+    const token = await validateOrRefreshToken();
+    updateUIForAuth();
+    if (token) {
+      await loadConversations();
+    }
+  } else {
+    showLandingAuth();
+    updateUIForAuth();
   }
 }
 

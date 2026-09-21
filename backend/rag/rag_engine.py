@@ -256,12 +256,8 @@ class TwoLayerRAGEngine:
             source_org = primary_chunk.get("source", "RBI")
             chunk_text = primary_chunk.get("chunk_text", "")
 
-            # Aggregate top matching chunks from the primary matching document or highly ranked chunks
-            explicit_doc_chunks = [c for c in kb_chunks if c.get("doc_title") and any(w.lower() in query.lower() for w in c.get("doc_title", "").split() if len(w) > 4)]
-            if explicit_doc_chunks:
-                matching_chunks = explicit_doc_chunks[:3]
-            else:
-                matching_chunks = [c for c in kb_chunks if c.get("document_id") == doc_id or c.get("score", 0) >= primary_chunk.get("score", 0) * 0.90]
+            # Aggregate top matching evidence chunks ranked by hybrid search
+            matching_chunks = kb_chunks[:4]
 
             # 0. User Attachment In-Depth Examination
             if primary_chunk.get("source") == "USER_ATTACHMENT":

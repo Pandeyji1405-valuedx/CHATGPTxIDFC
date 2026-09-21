@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Environment / Secrets
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Alembic
+# Do NOT ignore alembic/versions/*.py — those are committed migration files
+
+# Logs
+*.log

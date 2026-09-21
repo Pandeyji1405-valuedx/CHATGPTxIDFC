@@ -1,0 +1,52 @@
+# ============================================================
+# IDFC RBI Compliance Chatbot — Backend Dependencies
+# Phase 2: Authentication added
+# ============================================================
+
+# --- Web Framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# --- Configuration & Validation ---
+pydantic==2.10.3
+pydantic-settings==2.6.1
+email-validator==2.2.0       # Pydantic EmailStr validation
+
+# --- Database ---
+sqlalchemy==2.0.36
+asyncpg==0.30.0              # Async PostgreSQL driver
+psycopg2-binary==2.9.10      # Sync PostgreSQL driver (used by Alembic)
+alembic==1.14.0
+
+# --- Security (Phase 2) ---
+argon2-cffi==23.1.0          # Argon2 password hashing
+python-jose[cryptography]==3.3.0  # JWT tokens
+
+# --- File Upload & PDF Processing (Phase 3) ---
+python-multipart>=0.0.18
+pymupdf>=1.25.0
+
+# --- Vector Database & Embeddings (Phase 3) ---
+chromadb>=0.6.0
+sentence-transformers>=3.3.0,<=3.4.1
+transformers>=4.40.0,<=4.45.2
+huggingface-hub<1.0,>=0.23.2
+einops>=0.8.0
+
+# --- HTTP client (for testing) ---
+httpx==0.28.0
+
+# --- Cache & Memory (Phase 5) ---
+redis>=5.0.1
+pgvector>=0.3.0
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+aiosqlite==0.20.0            # Async SQLite for in-memory test DB
+fakeredis>=2.20.0            # Mock Redis for PyTest isolation
+
+# --- Utilities ---
+python-dotenv==1.0.1
+

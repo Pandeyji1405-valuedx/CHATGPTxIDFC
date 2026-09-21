@@ -1,0 +1,54 @@
+# ============================================================
+# Root .gitignore for IDFC Advisory Assistant / RBI Compliance Platform
+# ============================================================
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment secrets (NEVER commit these)
+.env
+*.env
+!.env.example
+
+# Local Data Stores & Vector DBs (NEVER commit local indexes or uploaded PDFs)
+storage/
+backend/storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary / Scratch files
+zz
+scratch/
+
+# Python (backend)
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/coverage.xml
+backend/dist/
+backend/build/
+backend/*.egg-info/
+.venv/
+__pycache__/
+
+# Node (frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+node_modules/
+
+# Logs
+*.log

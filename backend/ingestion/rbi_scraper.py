@@ -184,6 +184,37 @@ class RBICircularScraper:
 
         # 2. Extract directive body text
         content_table = soup.find("div", id="pnlDetails") or soup.find("div", id="annual") or soup
+        
+        # 2b. Extract internal hyperlinked sub-documents and Amendment Directions
+        sub_links = []
+        for a in content_table.find_all("a", href=True):
+            raw_href = a["href"].strip()
+            link_text = a.get_text(separator=" ", strip=True)
+            if not raw_href or raw_href.startswith("#") or raw_href.startswith("javascript:") or len(link_text) < 3:
+                continue
+            if any(w in link_text.lower() for w in ["back to previous", "home", "skip to", "disclaimer", "sitemap"]):
+                continue
+
+            full_sub_url = raw_href
+            if not raw_href.startswith("http"):
+                full_sub_url = f"{RBI_BASE_URL}{raw_href}" if raw_href.startswith("/") else f"{RBI_BASE_URL}/scripts/{raw_href}"
+
+            # Validate whether it's an amendment direction, master direction, notification, or PDF
+            is_relevant = (
+                "notificationuser.aspx" in full_sub_url.lower() or
+                "bs_viewmasdirections.aspx" in full_sub_url.lower() or
+                "fs_amendmentdirections.aspx" in full_sub_url.lower() or
+                full_sub_url.lower().endswith(".pdf") or
+                "rbidocs.rbi.org.in" in full_sub_url.lower() or
+                any(k in link_text.lower() for k in ["amendment directions", "directions", "guidelines", "stressed assets", "resolution", "relief measures"])
+            )
+            if is_relevant:
+                sub_links.append({
+                    "title": link_text,
+                    "url": full_sub_url,
+                    "parent_circular": circular_info.get("circular_number")
+                })
+
         # Remove navigation elements, scripts, and styles from content tree
         for tag in content_table.find_all(["script", "style", "nav", "input"]):
             tag.decompose()
@@ -200,6 +231,7 @@ class RBICircularScraper:
         result["pdf_url"] = pdf_url
         result["full_text"] = cleaned_text
         result["signatory"] = signatory
+        result["sub_links"] = sub_links
         return result
 
     def generate_formatted_pdf(self, circular: Dict[str, Any], dest_path: str) -> str:
@@ -461,14 +493,221 @@ class RBICircularScraper:
         logger.info(f"Master Compendium PDF created successfully at: {output_path}")
         return output_path
 
-    def crawl_and_ingest(self, max_circulars: int = 15, db_session = None) -> Dict[str, Any]:
+    def fetch_sub_directive(self, sub_link: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Fetches an internal hyperlinked sub-directive, amendment direction, or linked document.
+        Extracts its full regulatory text and generates an individual structured PDF.
+        """
+        url = sub_link.get("url")
+        title = sub_link.get("title", "RBI Amendment Direction")
+        parent_circ = sub_link.get("parent_circular", "RBI Directive")
+        if not url:
+            return None
+
+        # If it is a direct PDF link
+        if url.lower().endswith(".pdf") or "rbidocs.rbi.org.in" in url.lower():
+            safe_title = re.sub(r"[^a-zA-Z0-9_-]", "_", f"RBI_Sub_{title}")[:60]
+            pdf_path = os.path.join(self.output_dir, f"{safe_title}.pdf")
+            downloaded = self._http_download_binary(url, pdf_path)
+            if downloaded and os.path.exists(pdf_path) and os.path.getsize(pdf_path) >= 100:
+                with open(pdf_path, "rb") as f:
+                    checksum = hashlib.sha256(f.read()).hexdigest()
+                return {
+                    "id": hashlib.md5(url.encode()).hexdigest()[:12],
+                    "circular_number": f"{parent_circ} / {title[:40]}",
+                    "notification_number": title,
+                    "date_of_issue": datetime.now().strftime("%Y-%m-%d"),
+                    "department": "Department of Regulation",
+                    "subject": title,
+                    "detail_url": url,
+                    "pdf_url": url,
+                    "pdf_path": pdf_path,
+                    "checksum": checksum,
+                    "full_text": f"Reserve Bank of India Directive: {title}\nSource: {url}",
+                    "regulator": "RBI",
+                    "source": "RBI"
+                }
+
+        # Otherwise fetch HTML page (e.g. NotificationUser.aspx or BS_ViewMasDirections.aspx)
+        html = self._http_get(url)
+        if not html:
+            return None
+
+        soup = BeautifulSoup(html, "html.parser")
+        pnl = soup.find("div", id="pnlDetails") or soup.find("div", id="annual") or soup
+        for tag in pnl.find_all(["script", "style", "nav", "input"]):
+            tag.decompose()
+
+        body_text = pnl.get_text(separator="\n").strip()
+        cleaned_text = re.sub(r"\n{3,}", "\n\n", body_text)
+
+        # Extract circular/notification number and date from text
+        circ_num_match = re.search(r"(RBI/[\d\-]+/\d+|DOR\.[\w\.\-]+/\d{2,4}\-\d{2,4})", cleaned_text)
+        circ_num = circ_num_match.group(1) if circ_num_match else title
+        
+        date_match = re.search(r"((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4})", cleaned_text)
+        date_str = date_match.group(1) if date_match else datetime.now().strftime("%B %d, %Y")
+        clean_date = self._normalize_date(date_str)
+
+        sub_circ_info = {
+            "id": hashlib.md5(f"{url}_{title}".encode()).hexdigest()[:12],
+            "circular_number": circ_num,
+            "notification_number": circ_num,
+            "date_of_issue": clean_date or date_str,
+            "department": "Department of Regulation",
+            "subject": title,
+            "detail_url": url,
+            "pdf_url": url,
+            "full_text": cleaned_text,
+            "regulator": "RBI",
+            "source": "RBI"
+        }
+
+        # Generate structured PDF
+        safe_title = re.sub(r"[^a-zA-Z0-9_-]", "_", f"RBI_Sub_{title}")[:60]
+        pdf_path = os.path.join(self.output_dir, f"{safe_title}.pdf")
+        self.generate_formatted_pdf(sub_circ_info, pdf_path)
+        
+        with open(pdf_path, "rb") as f:
+            checksum = hashlib.sha256(f.read()).hexdigest()
+
+        sub_circ_info["pdf_path"] = pdf_path
+        sub_circ_info["checksum"] = checksum
+        return sub_circ_info
+
+    def crawl_amendment_directions_index(self, max_items: int = 35, db_session = None) -> List[Dict[str, Any]]:
+        """
+        Scrapes all Amendment Directions catalogued at `https://www.rbi.org.in/scripts/Fs_AmendmentDirections.aspx`.
+        Includes individual directions across Commercial Banks, Small Finance Banks, UCBs, RRBs, NBFCs, etc.
+        """
+        url = f"{RBI_BASE_URL}/scripts/Fs_AmendmentDirections.aspx"
+        logger.info(f"Fetching Amendment Directions Index from: {url}")
+        html = self._http_get(url)
+        if not html:
+            logger.warning(f"Could not load Amendment Directions index from {url}")
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        amendment_links = []
+        for a in soup.find_all("a", href=True):
+            raw_href = a["href"].strip()
+            link_text = a.get_text(separator=" ", strip=True)
+            if not raw_href or "javascript:" in raw_href or len(link_text) < 5:
+                continue
+            if "Amendment Directions" in link_text or "NotificationUser.aspx" in raw_href or "Directions" in link_text:
+                full_url = raw_href if raw_href.startswith("http") else f"{RBI_BASE_URL}{raw_href}"
+                amendment_links.append({"title": link_text, "url": full_url})
+
+        logger.info(f"Discovered {len(amendment_links)} Amendment Direction links on Fs_AmendmentDirections.aspx")
+        if max_items and max_items > 0:
+            amendment_links = amendment_links[:max_items]
+
+        results = []
+        for idx, item in enumerate(amendment_links, 1):
+            logger.info(f"Scraping Amendment Direction ({idx}/{len(amendment_links)}): {item['title'][:60]}")
+            sub_doc = self.fetch_sub_directive(item)
+            if sub_doc:
+                results.append(sub_doc)
+                if db_session:
+                    self._ingest_single_document(sub_doc, db_session)
+            time.sleep(0.3)
+
+        return results
+
+    def crawl_hyper_pages(self, start_id: int = 13705, count: int = 15, db_session = None, include_sublinks: bool = True) -> List[Dict[str, Any]]:
+        """
+        Navigates across historical and sequential circular index IDs (e.g. Id=13705, 13704, 13703...).
+        Extracts circular content and follows all internal hyperlinked sub-documents.
+        """
+        logger.info(f"Traversing {count} hyper-page circular index records starting from Id={start_id}...")
+        results = []
+        for offset in range(count):
+            cid = start_id - offset
+            detail_url = f"{RBI_BASE_URL}/scripts/BS_CircularIndexDisplay.aspx?Id={cid}"
+            circ_info = {
+                "id": str(cid),
+                "circular_number": f"RBI_ID_{cid}",
+                "detail_url": detail_url
+            }
+            detailed = self.fetch_circular_details(circ_info)
+            if detailed.get("full_text") and len(detailed.get("full_text", "")) > 50:
+                pdf_path = self.save_and_deliver_as_pdf(detailed)
+                results.append(detailed)
+                if db_session:
+                    self._ingest_single_document(detailed, db_session)
+
+                # Follow hyperlinked sublinks
+                if include_sublinks and detailed.get("sub_links"):
+                    for sub in detailed["sub_links"]:
+                        sub_doc = self.fetch_sub_directive(sub)
+                        if sub_doc:
+                            results.append(sub_doc)
+                            if db_session:
+                                self._ingest_single_document(sub_doc, db_session)
+            time.sleep(0.3)
+
+        return results
+
+    def _ingest_single_document(self, doc_info: Dict[str, Any], db_session) -> bool:
+        """Helper to safely ingest a single scraped document and its chunks into PostgreSQL."""
+        try:
+            existing = db_session.query(KnowledgeDocument).filter(
+                (KnowledgeDocument.notification_number == doc_info.get("notification_number")) |
+                (KnowledgeDocument.title == doc_info.get("subject"))
+            ).first()
+
+            if not existing:
+                doc = KnowledgeDocument(
+                    title=doc_info.get("subject", "RBI Circular Directive"),
+                    notification_number=doc_info.get("notification_number", doc_info.get("circular_number")),
+                    publication_date=doc_info.get("date_of_issue"),
+                    effective_date=doc_info.get("date_of_issue"),
+                    effective_from=doc_info.get("date_of_issue"),
+                    regulator="RBI",
+                    source="RBI",
+                    source_url=doc_info.get("detail_url") or doc_info.get("pdf_url") or RBI_INDEX_URL,
+                    document_type="pdf",
+                    department=doc_info.get("department") or "Department of Regulation",
+                    status="active",
+                    file_path=doc_info.get("pdf_path"),
+                    version="1.0",
+                    checksum=doc_info.get("checksum"),
+                    processing_status="indexed",
+                    page_count=1,
+                    is_ocr=False
+                )
+                db_session.add(doc)
+                db_session.commit()
+                db_session.refresh(doc)
+
+                # Chunk and index
+                text_content = doc_info.get("full_text") or doc_info.get("subject")
+                chunks = document_chunker.split_text_into_chunks(text_content, page_number=1)
+                for c in chunks:
+                    chunk_obj = KnowledgeChunk(
+                        document_id=doc.id,
+                        page_number=c.get("page_number", 1),
+                        chunk_index=c.get("chunk_index", 0),
+                        section=c.get("section", "Main Directive"),
+                        chunk_text=c.get("chunk_text"),
+                        bounding_box_json=json.dumps({"x": 40, "y": 100, "width": 520, "height": 600}),
+                        source_offsets_json=json.dumps({"char_start": 0, "char_end": len(c.get("chunk_text", ""))})
+                    )
+                    db_session.add(chunk_obj)
+                db_session.commit()
+                return True
+        except Exception as e:
+            db_session.rollback()
+            logger.error(f"Error ingesting directive {doc_info.get('subject')}: {e}")
+        return False
+
+    def crawl_and_ingest(self, max_circulars: int = 15, db_session = None, include_sublinks: bool = True, include_amendments: bool = True) -> Dict[str, Any]:
         """
         Complete end-to-end execution:
         1. Scrapes active circular index table from official RBI website.
         2. Fetches detail pages & authentic PDF download links.
-        3. Downloads and generates authentic PDF documents.
-        4. Compiles the Master Compendium PDF (`RBI_Circulars_Master_Compendium.pdf`).
-        5. Ingests documents and chunks into PostgreSQL & Hybrid Vector Store.
+        3. Recursively extracts and scrapes all internal hyperlinked sub-documents and Amendment Directions.
+        4. Ingests all documents and chunks into PostgreSQL & Hybrid Vector Store.
         """
         logger.info(f"Fetching official RBI Circular Index from: {RBI_INDEX_URL}")
         index_html = self._http_get(RBI_INDEX_URL)
@@ -484,84 +723,54 @@ class RBICircularScraper:
         detailed_circulars: List[Dict[str, Any]] = []
         pdf_paths: List[str] = []
 
+        # 1. Process Main Circulars
         for idx, circ in enumerate(parsed_circulars, 1):
-            logger.info(f"Processing ({idx}/{len(parsed_circulars)}): {circ.get('circular_number')} - {circ.get('subject')}")
+            logger.info(f"Processing Main Circular ({idx}/{len(parsed_circulars)}): {circ.get('circular_number')} - {circ.get('subject')}")
             detailed = self.fetch_circular_details(circ)
             pdf_path = self.save_and_deliver_as_pdf(detailed)
             pdf_paths.append(pdf_path)
             detailed_circulars.append(detailed)
-            time.sleep(0.3) # Rate limit politeness
+            if db_session:
+                self._ingest_single_document(detailed, db_session)
 
-        # Generate Master Compendium PDF
+            # 2. Process Hyperlinked Sub-Directives & Amendment Directions inside circulars
+            if include_sublinks and detailed.get("sub_links"):
+                logger.info(f"  Found {len(detailed['sub_links'])} hyperlinked sub-directives in {detailed.get('circular_number')}")
+                for s_idx, sub in enumerate(detailed["sub_links"], 1):
+                    logger.info(f"    Scraping Sub-Directive [{s_idx}/{len(detailed['sub_links'])}]: {sub['title'][:55]}")
+                    sub_doc = self.fetch_sub_directive(sub)
+                    if sub_doc:
+                        detailed_circulars.append(sub_doc)
+                        pdf_paths.append(sub_doc["pdf_path"])
+                        if db_session:
+                            self._ingest_single_document(sub_doc, db_session)
+                    time.sleep(0.2)
+
+            time.sleep(0.3)
+
+        # 3. Process Master Amendment Directions Index if enabled
+        if include_amendments:
+            amend_docs = self.crawl_amendment_directions_index(max_items=15, db_session=db_session)
+            for doc in amend_docs:
+                detailed_circulars.append(doc)
+                if doc.get("pdf_path"):
+                    pdf_paths.append(doc["pdf_path"])
+
+        # 4. Generate Master Compendium PDF
         master_pdf_path = os.path.join(self.output_dir, "RBI_Circulars_Master_Compendium.pdf")
         self.generate_master_compendium_pdf(detailed_circulars, master_pdf_path)
 
-        # Ingest into PostgreSQL if db_session is provided
-        ingested_count = 0
+        # 5. Rebuild Hybrid Vector Store & Invalidate Redis Cache
         if db_session:
-            for circ in detailed_circulars:
-                try:
-                    # Check if already in database
-                    existing = db_session.query(KnowledgeDocument).filter(
-                        (KnowledgeDocument.notification_number == circ.get("notification_number")) |
-                        (KnowledgeDocument.title == circ.get("subject"))
-                    ).first()
-
-                    if not existing:
-                        doc = KnowledgeDocument(
-                            title=circ.get("subject", "RBI Circular"),
-                            notification_number=circ.get("notification_number", circ.get("circular_number")),
-                            publication_date=circ.get("date_of_issue"),
-                            effective_date=circ.get("date_of_issue"),
-                            effective_from=circ.get("date_of_issue"),
-                            regulator="RBI",
-                            source="RBI",
-                            source_url=circ.get("detail_url") or circ.get("pdf_url") or RBI_INDEX_URL,
-                            document_type="pdf",
-                            department=circ.get("department") or "Department of Regulation",
-                            status="active",
-                            file_path=circ.get("pdf_path"),
-                            version="1.0",
-                            checksum=circ.get("checksum"),
-                            processing_status="indexed",
-                            page_count=1,
-                            is_ocr=False
-                        )
-                        db_session.add(doc)
-                        db_session.commit()
-                        db_session.refresh(doc)
-
-                        # Chunk and index
-                        text_content = circ.get("full_text") or circ.get("subject")
-                        chunks = document_chunker.split_text_into_chunks(text_content, page_number=1)
-                        for c in chunks:
-                            chunk_obj = KnowledgeChunk(
-                                document_id=doc.id,
-                                page_number=c.get("page_number", 1),
-                                chunk_index=c.get("chunk_index", 0),
-                                section=c.get("section", "Main Circular"),
-                                chunk_text=c.get("chunk_text"),
-                                bounding_box_json=json.dumps({"x": 40, "y": 100, "width": 520, "height": 600}),
-                                source_offsets_json=json.dumps({"char_start": 0, "char_end": len(c.get("chunk_text", ""))})
-                            )
-                            db_session.add(chunk_obj)
-                        db_session.commit()
-                        ingested_count += 1
-                except Exception as e:
-                    db_session.rollback()
-                    logger.error(f"Error ingesting circular {circ.get('circular_number')}: {e}")
-
-            # Rebuild hybrid vector store from PostgreSQL records
             from backend.ingestion.seed_rbi_kb import seed_database_and_vector_store
             seed_database_and_vector_store()
             redis_cache.flushall()
 
         return {
             "total_scraped": len(detailed_circulars),
-            "ingested_to_db": ingested_count,
             "master_compendium_pdf": master_pdf_path,
             "individual_pdfs_dir": self.output_dir,
-            "pdf_files": [os.path.basename(p) for p in pdf_paths],
+            "pdf_files": [os.path.basename(p) for p in set(pdf_paths) if p],
             "circulars": detailed_circulars
         }
 

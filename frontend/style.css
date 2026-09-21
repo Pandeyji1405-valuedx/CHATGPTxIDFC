@@ -794,8 +794,16 @@ html, body {
 }
 
 .assistant-row .message-avatar {
-  width: 28px;
-  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.assistant-row .chatgpt-avatar-icon {
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-full);
   background-color: var(--composer-surface);
   border: 1px solid var(--border-subtle);
@@ -803,9 +811,19 @@ html, body {
   align-items: center;
   justify-content: center;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13px;
   flex-shrink: 0;
-  margin-top: 2px;
+}
+
+.assistant-row .idfc-logo-badge {
+  height: 18px;
+  max-width: 55px;
+  object-fit: contain;
+  border-radius: 4px;
+  background-color: #ffffff;
+  padding: 1px 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .assistant-row .message-body-wrapper {
@@ -2344,4 +2362,86 @@ body.light-theme .modal-overlay {
   border-color: rgba(99, 102, 241, 0.3);
 }
 
+/* ==================== DUAL BRAND LOGOS (CHATGPT + IDFC FIRST BANK) ==================== */
+.brand-logo-duo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 auto 16px auto;
+}
 
+.brand-divider-plus {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-muted, #8e8ea0);
+}
+
+.idfc-avatar-large {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.idfc-brand-img-large {
+  height: 48px;
+  max-width: 150px;
+  object-fit: contain;
+  border-radius: 8px;
+  background-color: #ffffff;
+  padding: 4px 8px;
+  box-shadow: 0 4px 15px rgba(157, 29, 39, 0.25);
+}
+
+.idfc-brand-img-hero {
+  height: 42px;
+  max-width: 140px;
+  object-fit: contain;
+  border-radius: 8px;
+  background-color: #ffffff;
+  padding: 4px 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.idfc-brand-img-mini {
+  height: 18px;
+  max-width: 60px;
+  object-fit: contain;
+  border-radius: 4px;
+  background-color: #ffffff;
+  padding: 1px 4px;
+}
+
+.idfc-brand-img-nav {
+  height: 22px;
+  max-width: 80px;
+  object-fit: contain;
+  border-radius: 4px;
+  background-color: #ffffff;
+  padding: 2px 5px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.chatgpt-center-badge.duo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 auto 16px auto;
+}
+
+.message-avatar-duo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-avatar .idfc-logo-bubble {
+  height: 16px;
+  max-width: 45px;
+  object-fit: contain;
+  border-radius: 3px;
+  background-color: #ffffff;
+  padding: 1px 3px;
+}

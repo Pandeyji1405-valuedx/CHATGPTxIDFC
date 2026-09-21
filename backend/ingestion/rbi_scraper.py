@@ -57,16 +57,19 @@ class RBICircularScraper:
         return None
 
     def _http_download_binary(self, url: str, dest_path: str, timeout: int = 35) -> bool:
-        """Downloads a binary file (PDF/Image) directly to disk."""
+        """Downloads a binary file (PDF/Image) directly to disk, verifying genuine PDF header."""
         for attempt in range(3):
             try:
                 req = urllib.request.Request(url, headers=self.headers)
                 with urllib.request.urlopen(req, timeout=timeout) as response:
                     data = response.read()
-                    if len(data) > 0:
+                    if len(data) > 0 and data.startswith(b"%PDF-"):
                         with open(dest_path, "wb") as f:
                             f.write(data)
                         return True
+                    else:
+                        logger.warning(f"Downloaded content from {url} is not a valid binary PDF (header: {data[:20]!r}). Falling back to structured PDF generator.")
+                        return False
             except Exception as e:
                 logger.warning(f"Binary download failed for {url} (attempt {attempt+1}/3): {e}")
                 time.sleep(1.5 * (attempt + 1))
@@ -325,8 +328,18 @@ class RBICircularScraper:
             logger.info(f"Downloading authentic PDF from RBI: {pdf_url}")
             download_success = self._http_download_binary(pdf_url, pdf_path)
 
-        if not download_success or not os.path.exists(pdf_path) or os.path.getsize(pdf_path) < 100:
-            logger.info(f"Generating formatted RBI PDF for {circular.get('circular_number')}")
+        # Ensure that if the file doesn't exist, is empty, or lacks %PDF- header, we generate a clean, formatted PDF
+        is_valid_pdf = False
+        if os.path.exists(pdf_path) and os.path.getsize(pdf_path) >= 100:
+            try:
+                with open(pdf_path, "rb") as f:
+                    if f.read(5).startswith(b"%PDF-"):
+                        is_valid_pdf = True
+            except Exception:
+                is_valid_pdf = False
+
+        if not download_success or not is_valid_pdf:
+            logger.info(f"Generating structured RBI PDF for {circular.get('circular_number')}")
             self.generate_formatted_pdf(circular, pdf_path)
 
         # Compute SHA-256 Checksum

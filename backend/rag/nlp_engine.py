@@ -153,14 +153,36 @@ class NLPEngine:
     def __init__(self):
         pass
 
-    def detect_chitchat(self, text: str) -> Optional[Dict[str, Any]]:
+    def extract_friendly_user_name(self, name: Optional[str] = None, email: Optional[str] = None) -> str:
+        """Extracts clean, capitalized first name from user display name or email address."""
+        if name and name.strip() and name.strip().lower() not in ["user", "guest user", "default user", "none", "customer"]:
+            parts = name.strip().split()
+            first = re.sub(r"[^a-zA-Z0-9_\-]", "", parts[0])
+            if first and len(first) >= 2:
+                return first.capitalize()
+
+        if email and "@" in email:
+            local = email.split("@")[0].strip()
+            # Split on dots, underscores, dashes or numbers (e.g. shubham.kdjndjksv -> shubham)
+            tokens = [t for t in re.split(r"[\._\-0-9]", local) if len(t) >= 2]
+            if tokens:
+                return tokens[0].capitalize()
+            elif local:
+                return local.capitalize()
+
+        if name and name.strip() and name.strip().lower() not in ["none"]:
+            return name.strip().capitalize()
+
+        return "there"
+
+    def detect_chitchat(self, text: str, user_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
-        Detects if a user input is a pure conversational greeting, slang, pleasantry, 
-        acknowledgment, identity question, or farewell.
-        If a greeting precedes a real domain question, strips the greeting and marks is_chitchat=False.
+        Detects if a user input is a conversational greeting, pleasantry, acknowledgment,
+        identity question, or farewell, and formats personalized greetings addressing the user by name.
         """
         clean = text.strip()
         lower = clean.lower()
+        name_str = f" {user_name}" if (user_name and user_name.lower() != "there") else ""
 
         # Check if the query contains any core banking / domain keywords
         has_domain_keyword = any(re.search(rf"\b{re.escape(k)}\b", lower) for k in DOMAIN_KEYWORDS)
@@ -171,7 +193,7 @@ class NLPEngine:
                 return {
                     "is_chitchat": True,
                     "response": (
-                        "I am your **ChatGPT IDFC Banking Assistant**. I provide human-like, accurate answers grounded "
+                        f"Hello{name_str}! I am your **ChatGPT IDFC Banking Assistant**. I provide human-like, accurate answers grounded "
                         "strictly in official Reserve Bank of India (RBI) Master Directions, Banking Regulations, and IDFC FIRST Bank policies. "
                         "You can ask me about KYC guidelines, NEFT/RTGS limits, digital lending rules, housing loan LTV caps, "
                         "customer fraud liability, and more!"
@@ -183,7 +205,7 @@ class NLPEngine:
             if not has_domain_keyword:
                 return {
                     "is_chitchat": True,
-                    "response": "I'm doing well, thank you for asking! How can I assist you with your banking or regulatory questions today?"
+                    "response": f"I'm doing great{name_str}, thank you for asking! How can I assist you with your banking or regulatory questions today?"
                 }
 
         # 3. Gratitude & Thanks
@@ -191,7 +213,7 @@ class NLPEngine:
             if not has_domain_keyword:
                 return {
                     "is_chitchat": True,
-                    "response": "You're very welcome! Feel free to ask if you have any more questions about banking guidelines or transactions."
+                    "response": f"You're very welcome{name_str}! Feel free to ask if you have any more questions about banking guidelines or transactions."
                 }
 
         # 4. Acknowledgments & Approvals
@@ -199,20 +221,56 @@ class NLPEngine:
             if not has_domain_keyword:
                 return {
                     "is_chitchat": True,
-                    "response": "Glad that was helpful! Let me know if there's anything else you'd like to explore."
+                    "response": f"Glad that was helpful{name_str}! Let me know if there's anything else you'd like to explore."
                 }
 
-        # 5. Farewells & Partings
-        if re.search(r"\b(bye|goodbye|see you|see ya|good night|cya|tata|alvida|chal milte hai|take care)\b", lower):
+        # 5. Time-of-day specific Greetings (Good Morning, Afternoon, Evening, Night)
+        if re.search(r"\bgood\s+morning\b", lower):
             if not has_domain_keyword:
                 return {
                     "is_chitchat": True,
-                    "response": "Goodbye! Have a great day ahead, and feel free to reach out whenever you need banking assistance."
+                    "response": f"Good morning{name_str}! How can I assist you today with RBI Master Directions, IDFC FIRST Bank policies, or regulatory compliance?"
                 }
 
-        # 6. Pure Greetings & Slang (when no domain question is asked)
+        if re.search(r"\bgood\s+afternoon\b", lower):
+            if not has_domain_keyword:
+                return {
+                    "is_chitchat": True,
+                    "response": f"Good afternoon{name_str}! How can I assist you with your banking, RBI, SEBI, or IRDAI regulatory questions today?"
+                }
+
+        if re.search(r"\bgood\s+evening\b", lower):
+            if not has_domain_keyword:
+                return {
+                    "is_chitchat": True,
+                    "response": f"Good evening{name_str}! How can I assist you with your banking and regulatory queries today?"
+                }
+
+        if re.search(r"\bgood\s+night\b", lower):
+            if not has_domain_keyword:
+                return {
+                    "is_chitchat": True,
+                    "response": f"Good night{name_str}! Wishing you a peaceful rest. If you have any banking or regulatory compliance questions tomorrow, I will be right here to assist you."
+                }
+
+        if re.search(r"\bgood\s+day\b", lower):
+            if not has_domain_keyword:
+                return {
+                    "is_chitchat": True,
+                    "response": f"Good day{name_str}! How can I assist you with banking guidelines or account services today?"
+                }
+
+        # 6. Farewells & Partings
+        if re.search(r"\b(bye|goodbye|see you|see ya|cya|tata|alvida|chal milte hai|take care)\b", lower):
+            if not has_domain_keyword:
+                return {
+                    "is_chitchat": True,
+                    "response": f"Goodbye{name_str}! Have a wonderful day ahead, and feel free to reach out whenever you need banking assistance."
+                }
+
+        # 7. Pure Greetings & Slang (when no domain question is asked)
         is_greeting = bool(re.search(
-            r"\b(h+e+l+l*o+|h+e+l+o+|h+e+y+|h+i+|h+e+y+a+|h+o+l+a+|greetings|namaste+|namaskar|pranam|good\s+(morning|afternoon|evening|day|night)|kya\s+haal(\s+hai)?|kaise\s+ho|kaisa\s+hai|sab\s+theek|kem\s+cho|kemon\s+acho|yo+|wassup|what'?s\s+up|sup|bro+|bhai+|yaar|buddy|dude|suno|arre\s+bhai|oye|hlo+)\b",
+            r"\b(h+e+l+l*o+|h+e+l+o+|h+e+y+|h+i+|h+e+y+a+|h+o+l+a+|greetings|namaste+|namaskar|pranam|kya\s+haal(\s+hai)?|kaise\s+ho|kaisa\s+hai|sab\s+theek|kem\s+cho|kemon\s+acho|yo+|wassup|what'?s\s+up|sup|bro+|bhai+|yaar|buddy|dude|suno|arre\s+bhai|oye|hlo+)\b",
             lower
         ))
 
@@ -221,16 +279,16 @@ class NLPEngine:
             if re.search(r"\b(namaste+|namaskar|pranam|kya\s+haal|kaise\s+ho|kaisa\s+hai|sab\s+theek|bhai+|arre|suno)\b", lower):
                 return {
                     "is_chitchat": True,
-                    "response": "Namaste! Main aapki RBI Master Directions, banking rules aur IDFC FIRST Bank policies se related queries mein kaise help kar sakta hoon?"
+                    "response": f"Namaste{name_str}! Main aapki RBI Master Directions, banking rules aur IDFC FIRST Bank policies se related queries mein kaise help kar sakta hoon?"
                 }
             return {
                 "is_chitchat": True,
-                "response": "Hello! How can I help you today with RBI Master Directions, IDFC FIRST Bank policies, or account services?"
+                "response": f"Hello{name_str}! How can I help you today with RBI Master Directions, IDFC FIRST Bank policies, or regulatory compliance?"
             }
 
-        # 7. Greeting prefix attached to a real query (e.g. "Hi, what is NEFT limit?")
+        # 8. Greeting prefix attached to a real query (e.g. "Hi, what is NEFT limit?" or "Hello, kyc rules")
         greeting_prefix_match = re.match(
-            r"^(h+e+l+l*o+|h+e+l+o+|h+e+y+|h+i+|namaste+|namaskar|good\s+(morning|afternoon|evening|day)|bro+|bhai+|yo+|hlo+)[\s,!.:;-]+(.*)$",
+            r"^(h+e+l+l*o+|h+e+l+o+|h+e+y+|h+i+|namaste+|namaskar|good\s+(morning|afternoon|evening|day|night)|bro+|bhai+|yo+|hlo+)[\s,!.:;-]+(.*)$",
             clean,
             re.IGNORECASE
         )
@@ -596,17 +654,62 @@ class NLPEngine:
             "requested_depth": requested_depth
         }
 
+    def normalize_jumbled_descriptive_query(self, query: str) -> Tuple[str, List[str]]:
+        """
+        Handles jumbled, conversational descriptions, and sentence fragments to extract
+        the underlying canonical regulatory intent, sub-topics, and normalized search query.
+        """
+        lower = query.lower()
+        subtopics = []
+
+        # 1. KYC / V-CIP / OVD descriptive variations
+        if "kyc" in lower or any(w in lower for w in ["know your customer", "v-cip", "vcip", "video kyc", "ovd"]):
+            subtopics.append("Know Your Customer (KYC)")
+            if any(w in lower for w in ["physical", "physically", "present", "presence", "in person", "branch"]):
+                subtopics.append("Physical Verification & Officially Valid Documents (OVD)")
+            if any(w in lower for w in ["video", "vcip", "v-cip", "authenticat", "digital", "online"]):
+                subtopics.append("Video-based Customer Identification Process (V-CIP)")
+            if any(w in lower for w in ["periodic", "update", "updation", "high risk", "medium risk", "low risk", "years"]):
+                subtopics.append("Periodic KYC Updation")
+
+        # 2. Digital Lending / KFS / Cooling-off variations
+        if any(w in lower for w in ["lending", "loan", "cooling", "lookup", "kfs", "apr", "recovery agent"]):
+            if any(w in lower for w in ["digital lending", "app", "online loan", "kfs", "cooling-off", "look-up"]):
+                subtopics.append("RBI Digital Lending Directions 2022")
+
+        # 3. Unauthorized transactions / Fraud liability variations
+        if any(w in lower for w in ["fraud", "unauthorized", "unauthorised", "stolen", "lost card", "wrong debit", "scam"]):
+            subtopics.append("Customer Protection & Zero Fraud Liability")
+
+        # 4. NEFT / RTGS / IMPS settlement & limits variations
+        if any(w in lower for w in ["neft", "rtgs", "fund transfer", "batch", "operating hours", "2 lakh", "minimum limit"]):
+            if "rtgs" in lower:
+                subtopics.append("Real Time Gross Settlement (RTGS)")
+            if "neft" in lower:
+                subtopics.append("National Electronic Funds Transfer (NEFT)")
+
+        # 5. SEBI LODR / Materiality disclosure variations
+        if any(w in lower for w in ["lodr", "material event", "disclosure timeline", "regulation 30", "related party"]):
+            subtopics.append("SEBI LODR Regulation 30 Disclosures")
+
+        # 6. IRDAI Cyber Security & Policyholder protection
+        if any(w in lower for w in ["irdai", "free look", "ciso", "cyber incident", "localization"]):
+            subtopics.append("IRDAI Regulatory Guidelines")
+
+        return query, subtopics
+
     def process_query(
         self,
         query: str,
-        conversation_history: Optional[List[Dict[str, Any]]] = None
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        user_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Complete query understanding pipeline:
-        1. Check conversational intent (greetings, slang, gratitude).
-        2. Normalize Hinglish / colloquial phrasing.
+        1. Check conversational intent (greetings, slang, gratitude) with user name personalization.
+        2. Normalize Hinglish / colloquial phrasing & jumbled query structures.
         3. Coreference / pronoun resolution against conversation history.
-        4. Entity extraction.
+        4. Entity extraction & canonical subtopic mapping.
         5. Query intent classification for precise answer synthesis.
         6. Extract temporal compliance dates and regulator scopes.
         """
@@ -614,7 +717,7 @@ class NLPEngine:
         original_query = query.strip()
 
         # Step 1: Check Chitchat Intent
-        chitchat = self.detect_chitchat(original_query)
+        chitchat = self.detect_chitchat(original_query, user_name=user_name)
         if chitchat and chitchat.get("is_chitchat"):
             return {
                 "original_query": original_query,
@@ -632,18 +735,24 @@ class NLPEngine:
 
         target_query = chitchat["cleaned_query"] if (chitchat and "cleaned_query" in chitchat) else original_query
 
-        # Step 2: Normalize Hinglish and Banking Acronym Aliases
+        # Step 2: Normalize Hinglish, Banking Acronym Aliases & Jumbled Patterns
         hinglish_normalized = self.normalize_hinglish(target_query)
         acronym_normalized = self.normalize_acronym_aliases(hinglish_normalized)
+        _, jumbled_subtopics = self.normalize_jumbled_descriptive_query(acronym_normalized)
 
         # Step 3: Coreference resolution
         resolved_query, resolved_entities, clarification_needed = self.resolve_coreference(
             acronym_normalized, conversation_history
         )
 
-        # Step 4: Extract entities
+        # Step 4: Extract entities and merge subtopics
         entities = self.extract_entities(resolved_query)
-        all_resolved_names = list(set(resolved_entities + [e["canonical_value"] for e in entities] + [e["entity_value"] for e in entities]))
+        all_resolved_names = list(set(
+            resolved_entities +
+            [e["canonical_value"] for e in entities] +
+            [e["entity_value"] for e in entities] +
+            jumbled_subtopics
+        ))
 
         # Step 5: Semantic Intent Analysis
         intent_info = self.analyze_query_intent(resolved_query)

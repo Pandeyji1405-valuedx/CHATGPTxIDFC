@@ -72,10 +72,15 @@ def handle_chat_query(
         db.commit()
         db.refresh(conversation)
 
-    # 2. Run Multi-Regulator 2-Layer RAG Pipeline with Token Budgeting & Response Composer
+    # 2. Extract friendly user display name
+    from backend.rag.nlp_engine import nlp_engine
+    user_name = nlp_engine.extract_friendly_user_name(current_user.name, current_user.email)
+
+    # 3. Run Multi-Regulator 2-Layer RAG Pipeline with Token Budgeting & Response Composer
     rag_result = rag_engine.process_query(
         db=db,
         user_id=current_user.id,
+        user_name=user_name,
         conversation_id=conversation.id,
         raw_query=raw_query,
         regulator_filter=req.regulator_filter,

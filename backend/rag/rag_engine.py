@@ -121,7 +121,11 @@ class TwoLayerRAGEngine:
             "anxious", "scared", "panicking", "urgent", "urgently", "yesterday", "today",
             "tomorrow", "used", "send", "sent", "done", "got", "help", "mitakenly",
             "mistakenly", "wrong", "accidently", "accidentally", "much", "many", "just",
-            "should", "would", "could", "happen", "happens", "money", "rupees", "account"
+            "should", "would", "could", "happen", "happens", "money", "rupees", "account",
+            "term", "person", "needs", "need", "physically", "present", "presence",
+            "video", "authenticating", "authentication", "authenticate", "etc", "style",
+            "type", "kind", "means", "meaning", "definition", "understand", "reply",
+            "jumbled", "straight", "direct", "keywords", "differently", "different"
         }
 
         chunk_lower = chunk_text.lower()
@@ -152,7 +156,18 @@ class TwoLayerRAGEngine:
             if "cooling-off" not in chunk_lower and "look-up" not in chunk_lower:
                 return False
 
-        # 3. Situational Banking Scenario Matches
+        # 3. Direct Core Regulatory Acronym / Concept Match (e.g. KYC, V-CIP, OVD, NEFT, RTGS, IMPS, UPI, LODR, KFS)
+        core_domain_matches = [
+            ("kyc", "kyc"), ("v-cip", "v-cip"), ("vcip", "v-cip"), ("ovd", "ovd"),
+            ("neft", "neft"), ("rtgs", "rtgs"), ("imps", "imps"), ("upi", "upi"),
+            ("lodr", "lodr"), ("kfs", "kfs"), ("fastag", "fastag"), ("cibil", "cibil"),
+            ("npa", "npa"), ("ltv", "ltv"), ("crr", "crr"), ("slr", "slr")
+        ]
+        for q_term, c_term in core_domain_matches:
+            if re.search(rf"\b{re.escape(q_term)}\b", query_lower) and (c_term in chunk_lower or q_term in chunk_lower):
+                return True
+
+        # 4. Situational Banking Scenario Matches
         if any(w in query_lower for w in ["fraud", "stolen", "unauthorized", "unauthorised", "lost card"]):
             if any(w in chunk_lower for w in ["unauthorised", "unauthorized", "liability", "third party", "negligence", "customer protection"]):
                 return True
@@ -161,7 +176,7 @@ class TwoLayerRAGEngine:
             if any(w in chunk_lower for w in ["neft", "rtgs", "beneficiary", "return", "remitter", "compensation", "turnaround"]):
                 return True
 
-        # 4. Explicit Circular / Notification Code Matching
+        # 5. Explicit Circular / Notification Code Matching
         circular_matches = re.findall(r"(?:RBI/\d{4}-\d{2}/\d+|(?:DOR|DBR|DPSS|CEP|FIDD|DBOD|DBS|CIR|IDFC)[A-Z0-9\.\-/]+)", query.upper())
         if circular_matches:
             for circ in circular_matches:
@@ -169,7 +184,7 @@ class TwoLayerRAGEngine:
                 if any(p.lower() in chunk_lower for p in parts):
                     return True
 
-        # 5. Subject-Specific Token Overlap
+        # 6. Subject-Specific Token Overlap
         query_tokens = set(re.findall(r"\b[a-zA-Z0-9_-]{3,}\b", query_lower)) - generic_words
         if not query_tokens:
             return True
@@ -321,7 +336,25 @@ class TwoLayerRAGEngine:
                 except Exception as e:
                     logger.warning(f"Gemini grounded synthesis fallback: {e}")
 
-            # 5. Numerical Limits & Thresholds Intent
+            # 5. Core KYC (Know Your Customer) Unified Synthesis across All Formats
+            query_lower = query.lower()
+            if "kyc" in query_lower or any("kyc" in str(e).lower() for e in resolved_entities):
+                return (
+                    f"Under the approved **{doc_title}**{notif_prefix}, **Know Your Customer (KYC)** is a mandatory customer "
+                    "identification and due diligence process to verify customer identity and combat financial fraud and money laundering:\n\n"
+                    "### 1. 📋 Identification & Verification Modes:\n"
+                    "- **In-Person / Physical Verification**: Customer submits certified copies of approved **Officially Valid Documents (OVDs)** "
+                    "(Passport, Driving License, Proof of possession of Aadhaar number, Voter's Identity Card, NREGA Job Card, NPR Letter) to a bank branch official.\n"
+                    "- **Video-based Customer Identification Process (V-CIP)**: An authorized digital onboarding method allowing bank staff to conduct a secure, live, "
+                    "geo-tagged video interaction with real-time facial match and digital Aadhaar/PAN verification without physical branch presence.\n\n"
+                    "### 2. 🔄 Mandatory Periodic Updation Schedule:\n"
+                    "- **High-Risk Customers**: Every **2 years**\n"
+                    "- **Medium-Risk Customers**: Every **8 years**\n"
+                    "- **Low-Risk Customers**: Every **10 years**\n\n"
+                    f"*Source: {source_org} Approved Document **{doc_title}**{notif_prefix}*"
+                )
+
+            # 6. Numerical Limits & Thresholds Intent
             if query_intent == "NUMERICAL_LIMITS":
                 sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
                 limit_sentences = [s.strip() for s in sentences if re.search(r"(₹|\b\d+%\b|\blimit\b|\bminimum\b|\bmaximum\b|\bcap\b|\bratio\b|\blakhs?\b|\bcrores?\b)", s, re.IGNORECASE)]
@@ -332,7 +365,7 @@ class TwoLayerRAGEngine:
                         f"{body}"
                     )
 
-            # 6. Charges & Penalties Intent
+            # 7. Charges & Penalties Intent
             if query_intent == "CHARGES_PENALTIES":
                 sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
                 charge_sentences = [s.strip() for s in sentences if re.search(r"\b(charge|charges|fee|fees|penalty|penalties|penal interest|waived|prohibited from levying|rate plus)\b", s, re.IGNORECASE)]
@@ -343,7 +376,7 @@ class TwoLayerRAGEngine:
                         f"{body}"
                     )
 
-            # 7. Operating Hours & Settlement Timelines Intent
+            # 8. Operating Hours & Settlement Timelines Intent
             if query_intent == "OPERATING_HOURS_TIMELINES":
                 sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
                 hour_sentences = [s.strip() for s in sentences if re.search(r"\b(24x7|operating hours|round-the-clock|batches|settlement|hours|working days|within \d+)\b", s, re.IGNORECASE)]
@@ -354,7 +387,7 @@ class TwoLayerRAGEngine:
                         f"{body}"
                     )
 
-            # 8. Default / General Factual / Requirements
+            # 9. Default / General Factual / Requirements
             clean_body = re.sub(r"^Section\s+\d+:\s*[^\n]+\n*", "", chunk_text, flags=re.MULTILINE).strip()
             return f"According to the approved {source_org} document **{doc_title}**{notif_prefix}:\n\n{clean_body or chunk_text}"
 
@@ -378,6 +411,7 @@ class TwoLayerRAGEngine:
         user_id: str,
         conversation_id: Optional[str],
         raw_query: str,
+        user_name: Optional[str] = None,
         regulator_filter: Optional[List[str]] = None,
         as_of_date: Optional[str] = None,
         department_filter: Optional[str] = None,
@@ -386,7 +420,7 @@ class TwoLayerRAGEngine:
     ) -> Dict[str, Any]:
         """
         Full Conversational & 2-Layer RAG Pipeline with Redis Context Mapping:
-        1. Checks for natural conversational greetings / slangs / pleasantries.
+        1. Checks for natural conversational greetings / slangs / pleasantries with user name personalization.
         2. Normalizes Hinglish + entity extraction + pronoun resolution + intent classification.
         3. Handles Knowledge Catalog requests directly from database document registry.
         4. Layer 1: Conversation DB RAG.
@@ -412,7 +446,7 @@ class TwoLayerRAGEngine:
                 })
 
         # Step 1: NLP Preprocessing, Conversational Chitchat & Coreference
-        nlp_res = nlp_engine.process_query(raw_query, conversation_history=history_msgs)
+        nlp_res = nlp_engine.process_query(raw_query, conversation_history=history_msgs, user_name=user_name)
 
         # Handle Conversational Chitchat (Greetings, Slang, Thanks, Identity, Emotional check-in)
         if nlp_res.get("is_chitchat") and nlp_res.get("chitchat_response"):
@@ -420,7 +454,7 @@ class TwoLayerRAGEngine:
             if settings.USE_GEMINI_SYNTHESIS:
                 try:
                     from backend.rag.gemini_service import gemini_service
-                    gemini_chit = gemini_service.generate_conversational_chitchat(raw_query, history_msgs)
+                    gemini_chit = gemini_service.generate_conversational_chitchat(raw_query, history_msgs, user_name=user_name)
                     if gemini_chit and len(gemini_chit.strip()) > 10:
                         chitchat_ans = gemini_chit
                 except Exception as e:

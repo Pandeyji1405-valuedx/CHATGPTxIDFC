@@ -141,11 +141,12 @@ Instructions:
     def generate_conversational_chitchat(
         self,
         query: str,
-        conversation_history: Optional[List[Dict[str, Any]]] = None
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        user_name: Optional[str] = None
     ) -> Optional[str]:
         """
         Generates empathetic, natural conversational responses for greetings,
-        identity questions, and emotional inquiries.
+        identity questions, and emotional inquiries addressing user by name.
         """
         history_str = ""
         if conversation_history:
@@ -154,7 +155,9 @@ Instructions:
             if lines:
                 history_str = "Conversation context:\n" + "\n".join(lines) + "\n\n"
 
-        prompt = f"""{history_str}User message: "{query}"
+        name_clause = f" The customer's name is {user_name}. Greet and address them warmly by their name." if (user_name and user_name.lower() != "there") else ""
+
+        prompt = f"""{history_str}User message: "{query}"{name_clause}
 
 Respond as ChatGPT for IDFC FIRST Bank. Be warm, welcoming, articulate, and empathetic."""
 

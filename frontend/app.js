@@ -171,6 +171,7 @@ function escapeHtml(str) {
 
 function closeAllModals() {
   document.querySelectorAll(".modal-overlay").forEach(m => m.classList.add("hidden"));
+  if (DOM.modelDropdownMenu) DOM.modelDropdownMenu.classList.add("hidden");
 }
 
 // ==================== AUTHENTICATION & MULTI-ACCOUNT ====================
@@ -1277,18 +1278,6 @@ async function triggerReindex() {
     DOM.btnReindexAll.disabled = false;
     DOM.btnReindexAll.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Re-index All`;
   }
-}
-
-// ==================== MODALS & HELPERS ====================
-
-function closeAllModals() {
-  document.querySelectorAll(".modal-overlay").forEach(m => m.classList.add("hidden"));
-  if (DOM.modelDropdownMenu) DOM.modelDropdownMenu.classList.add("hidden");
-}
-
-function escapeHtml(str) {
-  if (!str) return "";
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 // ==================== INITIALIZATION & EVENT LISTENERS ====================

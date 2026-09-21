@@ -50,7 +50,7 @@ class AnswerValidator:
         Verifies that factual claims in the answer are grounded in the retrieved context.
         Returns: (is_valid, sanitized_answer, list_of_violations)
         """
-        if source_type == "NO_SUPPORTED_SOURCE":
+        if source_type in ["NO_SUPPORTED_SOURCE", "ATTACHMENT_ANALYSIS", "CONVERSATIONAL"]:
             return True, answer, []
 
         answer_facts = self.extract_factual_tokens(answer)

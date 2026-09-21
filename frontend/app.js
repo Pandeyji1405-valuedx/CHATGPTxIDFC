@@ -14,7 +14,9 @@ const state = {
   isRecordingSpeech: false,
   speechRecognition: null,
   isAuthModeRegister: false,
+  isLandingAuthModeRegister: false,
   selectedUploadFile: null,
+  selectedChatAttachment: null,
   ttsRate: 1.0,
   autoTts: false,
   sttReview: true,
@@ -54,6 +56,8 @@ const PROMPTS_BY_CATEGORY = {
 
 // DOM Elements
 const DOM = {
+  authLandingView: document.getElementById("auth-landing-view"),
+  appContainer: document.getElementById("app-container"),
   sidebar: document.getElementById("sidebar"),
   btnSidebarCollapse: document.getElementById("btn-sidebar-collapse"),
   btnSidebarExpand: document.getElementById("btn-sidebar-expand"),
@@ -71,6 +75,12 @@ const DOM = {
   btnSend: document.getElementById("btn-send"),
   btnMic: document.getElementById("btn-mic"),
   btnAttachFile: document.getElementById("btn-attach-file"),
+  chatAttachmentPreview: document.getElementById("chat-attachment-preview"),
+  chatFileInput: document.getElementById("chat-file-input"),
+  attachmentIconContainer: document.getElementById("attachment-icon-container"),
+  attachmentPillName: document.getElementById("attachment-pill-name"),
+  attachmentPillSize: document.getElementById("attachment-pill-size"),
+  btnRemoveAttachment: document.getElementById("btn-remove-attachment"),
   speechReviewBar: document.getElementById("speech-review-bar"),
   speechTranscriptInput: document.getElementById("speech-transcript-input"),
   btnConfirmSpeech: document.getElementById("btn-confirm-speech"),
@@ -89,7 +99,22 @@ const DOM = {
   asOfDateSelect: document.getElementById("as-of-date-select"),
   requestedDepthSelect: document.getElementById("requested-depth-select"),
   regulatorChips: document.getElementById("regulator-chips"),
-  // Modals
+  // Landing Auth View Elements
+  landingAuthForm: document.getElementById("landing-auth-form"),
+  landingAuthTitle: document.getElementById("landing-auth-title"),
+  landingAuthSubtitle: document.getElementById("landing-auth-subtitle"),
+  landingNameGroup: document.getElementById("landing-name-group"),
+  landingNameInput: document.getElementById("landing-name-input"),
+  landingEmailInput: document.getElementById("landing-email-input"),
+  landingPasswordInput: document.getElementById("landing-password-input"),
+  landingBtnSubmit: document.getElementById("landing-btn-submit"),
+  landingBtnToggleMode: document.getElementById("landing-btn-toggle-mode"),
+  landingAuthTogglePrompt: document.getElementById("landing-auth-toggle-prompt"),
+  landingBtnGoogle: document.getElementById("landing-btn-google"),
+  landingBtnCustomer: document.getElementById("landing-btn-customer"),
+  landingBtnAdmin: document.getElementById("landing-btn-admin"),
+  landingBtnDevesh: document.getElementById("landing-btn-devesh"),
+  // Auth Modal (Secondary / in-app switch)
   authModal: document.getElementById("auth-modal"),
   authModalTitle: document.getElementById("auth-modal-title"),
   authForm: document.getElementById("auth-form"),
@@ -206,6 +231,26 @@ function loadAccountsFromStorage() {
   }
 }
 
+function showLandingAuth() {
+  if (DOM.authLandingView) DOM.authLandingView.classList.remove("hidden");
+  if (DOM.appContainer) DOM.appContainer.classList.add("hidden");
+}
+
+function hideLandingAuth() {
+  if (DOM.authLandingView) DOM.authLandingView.classList.add("hidden");
+  if (DOM.appContainer) DOM.appContainer.classList.remove("hidden");
+}
+
+function setLandingAuthMode(isRegister) {
+  state.isLandingAuthModeRegister = isRegister;
+  if (DOM.landingNameGroup) DOM.landingNameGroup.classList.toggle("hidden", !isRegister);
+  if (DOM.landingAuthTitle) DOM.landingAuthTitle.textContent = isRegister ? "Create your account" : "Welcome to ChatGPT";
+  if (DOM.landingAuthSubtitle) DOM.landingAuthSubtitle.textContent = isRegister ? "Sign up to begin conversing with IDFC FIRST Assistant" : "Log in or create your IDFC FIRST Regulatory Assistant account to get started.";
+  if (DOM.landingBtnSubmit) DOM.landingBtnSubmit.textContent = isRegister ? "Sign up" : "Continue";
+  if (DOM.landingAuthTogglePrompt) DOM.landingAuthTogglePrompt.textContent = isRegister ? "Already have an account?" : "Don't have an account?";
+  if (DOM.landingBtnToggleMode) DOM.landingBtnToggleMode.textContent = isRegister ? "Log in" : "Sign up";
+}
+
 async function validateOrRefreshToken() {
   const account = getActiveAccount();
   if (account && account.token) {
@@ -242,30 +287,6 @@ async function validateOrRefreshToken() {
     return account.token;
   }
 
-  // Only if there are zero saved accounts, bootstrap initial demo user
-  if (!state.accounts || state.accounts.length === 0) {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "customer@idfcbank.com", password: "Customer@123" })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const newAcc = {
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-          token: data.access_token
-        };
-        addAccount(newAcc);
-        return data.access_token;
-      }
-    } catch (err) {
-      console.error("Auto session recover failed:", err);
-    }
-  }
   return null;
 }
 
@@ -281,6 +302,7 @@ async function authenticatedFetch(url, options = {}) {
 function updateUIForAuth() {
   const active = getActiveAccount();
   if (active) {
+    hideLandingAuth();
     if (DOM.authBtnLabel) DOM.authBtnLabel.textContent = "Switch Account";
     if (DOM.userDisplayName) DOM.userDisplayName.textContent = active.name;
     if (DOM.userAvatarPlaceholder) {
@@ -290,6 +312,7 @@ function updateUIForAuth() {
       DOM.adminKbBtnContainer.classList.toggle("hidden", active.role !== "admin");
     }
   } else {
+    showLandingAuth();
     if (DOM.authBtnLabel) DOM.authBtnLabel.textContent = "Log in";
     if (DOM.userDisplayName) DOM.userDisplayName.textContent = "Guest User";
     if (DOM.userAvatarPlaceholder) DOM.userAvatarPlaceholder.innerHTML = `<span>G</span>`;
@@ -384,6 +407,8 @@ function logoutCurrentAccount() {
     DOM.messagesStream.appendChild(DOM.welcomeHero);
     DOM.welcomeHero.classList.remove("hidden");
     if (DOM.accountDrawer) DOM.accountDrawer.classList.add("hidden");
+  } else {
+    showLandingAuth();
   }
 }
 
@@ -396,7 +421,26 @@ async function loginUser(email, password) {
     });
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.detail || "Login failed");
+      const errMsg = err.detail || "Login failed";
+      
+      // If user does not exist, ask them to sign up and auto toggle to register
+      if (res.status === 404 || errMsg.toLowerCase().includes("does not exist") || errMsg.toLowerCase().includes("not found")) {
+        showToast("Account not found. Please sign up below!");
+        setLandingAuthMode(true);
+        if (DOM.landingEmailInput) DOM.landingEmailInput.value = email;
+        if (DOM.landingPasswordInput) DOM.landingPasswordInput.value = password;
+        
+        state.isAuthModeRegister = true;
+        if (DOM.authNameGroup) DOM.authNameGroup.classList.remove("hidden");
+        if (DOM.authModalTitle) DOM.authModalTitle.textContent = "Create your account";
+        if (DOM.btnAuthSubmit) DOM.btnAuthSubmit.textContent = "Sign up";
+        if (DOM.btnAuthToggleMode) DOM.btnAuthToggleMode.textContent = "Log in";
+        if (DOM.authEmailInput) DOM.authEmailInput.value = email;
+        if (DOM.authPasswordInput) DOM.authPasswordInput.value = password;
+        return;
+      }
+      
+      throw new Error(errMsg);
     }
     const data = await res.json();
     addAccount({
@@ -407,9 +451,11 @@ async function loginUser(email, password) {
       token: data.access_token
     });
     closeAllModals();
-    showToast(`Logged in as ${data.user.name}`);
+    hideLandingAuth();
+    showToast(`Welcome back, ${data.user.name}`);
     await loadConversations();
   } catch (err) {
+    showToast(err.message);
     alert(err.message);
   }
 }
@@ -434,9 +480,11 @@ async function registerUser(name, email, password) {
       token: data.access_token
     });
     closeAllModals();
+    hideLandingAuth();
     showToast(`Account created for ${data.user.name}`);
     await loadConversations();
   } catch (err) {
+    showToast(err.message);
     alert(err.message);
   }
 }
@@ -462,12 +510,15 @@ async function googleLogin(email = "devesh.pandey1405@gmail.com", name = "devesh
       token: data.access_token
     });
     closeAllModals();
+    hideLandingAuth();
     showToast(`Signed in as ${data.user.name}`);
     await loadConversations();
   } catch (err) {
+    showToast(err.message);
     alert(err.message);
   }
 }
+
 
 // ==================== CONVERSATIONS (SIDEBAR) ====================
 
@@ -658,6 +709,85 @@ function openPassageViewer(citation) {
   DOM.passageViewerModal.classList.remove("hidden");
 }
 
+// ==================== ATTACHMENT PROCESSING (CHATGPT MULTIMODAL) ====================
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function getFileIconClass(fileType) {
+  const t = (fileType || "").toLowerCase();
+  if (t === "pdf") return "fa-file-pdf";
+  if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(t)) return "fa-file-image";
+  if (["wav", "mp3", "m4a", "ogg", "webm", "audio"].includes(t)) return "fa-file-audio";
+  if (["mp4", "mov", "avi", "mkv", "video"].includes(t)) return "fa-file-video";
+  if (["docx", "doc"].includes(t)) return "fa-file-word";
+  if (["csv", "xlsx", "xls"].includes(t)) return "fa-file-excel";
+  if (["json", "js", "py", "html", "css"].includes(t)) return "fa-file-code";
+  return "fa-file-lines";
+}
+
+async function uploadChatAttachment(file) {
+  if (!file) return;
+
+  // Show attachment pill with loading spinner
+  if (DOM.chatAttachmentPreview) DOM.chatAttachmentPreview.classList.remove("hidden");
+  if (DOM.attachmentIconContainer) DOM.attachmentIconContainer.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+  if (DOM.attachmentPillName) DOM.attachmentPillName.textContent = file.name;
+  if (DOM.attachmentPillSize) DOM.attachmentPillSize.textContent = "Processing & examining...";
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await authenticatedFetch(`${API_BASE}/api/chat/upload-attachment`, {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      let errMsg = "Failed to upload file";
+      try {
+        const errJson = await res.json();
+        errMsg = errJson.detail || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    state.selectedChatAttachment = data.attachment;
+
+    const iconClass = getFileIconClass(data.attachment.file_type);
+    if (DOM.attachmentIconContainer) {
+      DOM.attachmentIconContainer.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+    }
+    if (DOM.attachmentPillName) {
+      DOM.attachmentPillName.textContent = data.attachment.original_name;
+    }
+    if (DOM.attachmentPillSize) {
+      DOM.attachmentPillSize.textContent = `${formatBytes(data.attachment.size_bytes)} • ${data.attachment.char_count} chars extracted`;
+    }
+
+    showToast(`Attached ${data.attachment.original_name}`);
+    if (DOM.btnSend) DOM.btnSend.disabled = false;
+  } catch (err) {
+    console.error("Chat attachment upload error:", err);
+    showToast(`Upload failed: ${err.message}`);
+    clearChatAttachment();
+  }
+}
+
+function clearChatAttachment() {
+  state.selectedChatAttachment = null;
+  if (DOM.chatAttachmentPreview) DOM.chatAttachmentPreview.classList.add("hidden");
+  if (DOM.chatFileInput) DOM.chatFileInput.value = "";
+  if (DOM.btnSend) DOM.btnSend.disabled = !DOM.chatTextarea?.value.trim();
+}
+
 // ==================== CHAT PIPELINE & MESSAGES ====================
 
 function renderMessage(role, content, meta = {}) {
@@ -677,7 +807,24 @@ function renderMessage(role, content, meta = {}) {
   let innerContentHtml = "";
 
   if (isUser) {
-    innerContentHtml = `<div class="message-content">${escapeHtml(content)}</div>`;
+    let attachmentHtml = "";
+    if (meta.attachment) {
+      const att = meta.attachment;
+      const iconClass = getFileIconClass(att.file_type);
+      attachmentHtml = `
+        <div class="message-attached-file">
+          <div class="message-attached-icon"><i class="fa-solid ${iconClass}"></i></div>
+          <div>
+            <div class="message-attached-name">${escapeHtml(att.original_name || att.filename)}</div>
+            <div class="message-attached-type">${escapeHtml(att.file_type || "file")} • ${formatBytes(att.size_bytes)}</div>
+          </div>
+        </div>
+      `;
+    }
+    innerContentHtml = `
+      ${attachmentHtml}
+      ${content ? `<div class="message-content">${escapeHtml(content)}</div>` : ''}
+    `;
   } else {
     // Assistant message
     const rawAnswer = meta.answer || content;
@@ -700,6 +847,10 @@ function renderMessage(role, content, meta = {}) {
       badgeClass = "badge-chat";
       badgeText = "Conversational";
       badgeIcon = "fa-comments";
+    } else if (meta.source_type === "ATTACHMENT_ANALYSIS") {
+      badgeClass = "badge-attachment";
+      badgeText = "Attached Document Examination";
+      badgeIcon = "fa-file-lines";
     } else if (meta.source_type === "NO_SUPPORTED_SOURCE") {
       badgeClass = "badge-nosource";
       badgeText = "No Verified Source";
@@ -873,16 +1024,20 @@ let activeChatAbortController = null;
 
 async function sendChatMessage(queryText) {
   const query = (queryText || DOM.chatTextarea.value).trim();
-  if (!query) return;
+  const attachment = state.selectedChatAttachment;
+
+  if (!query && !attachment) return;
 
   if (activeChatAbortController) {
     activeChatAbortController.abort();
   }
   activeChatAbortController = new AbortController();
 
-  renderMessage("user", query);
+  // Render message in feed
+  renderMessage("user", query, { attachment });
   DOM.chatTextarea.value = "";
   DOM.chatTextarea.style.height = "24px";
+  clearChatAttachment();
 
   DOM.btnSend.disabled = false;
   DOM.btnSend.innerHTML = `<i class="fa-solid fa-square" style="font-size:12px;"></i>`;
@@ -891,6 +1046,10 @@ async function sendChatMessage(queryText) {
   const loadingRow = document.createElement("div");
   loadingRow.className = "message-row assistant-row";
   loadingRow.id = "assistant-loading-indicator";
+  const loadingStatus = attachment
+    ? `Examining attached file & synthesizing insights...`
+    : `Grounding answer across ${state.activeRegulator === 'ALL' ? 'RBI, SEBI & IRDAI' : state.activeRegulator} directives...`;
+
   loadingRow.innerHTML = `
     <div class="message-avatar">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
@@ -899,7 +1058,7 @@ async function sendChatMessage(queryText) {
     </div>
     <div class="message-body-wrapper">
       <div class="message-content" style="color:var(--text-muted);font-style:italic;">
-        <i class="fa-solid fa-circle-notch fa-spin"></i> Grounding answer across ${state.activeRegulator === 'ALL' ? 'RBI, SEBI & IRDAI' : state.activeRegulator} directives...
+        <i class="fa-solid fa-circle-notch fa-spin"></i> ${loadingStatus}
       </div>
     </div>
   `;
@@ -915,7 +1074,8 @@ async function sendChatMessage(queryText) {
         query: query,
         regulator_filter: state.activeRegulator === "ALL" ? null : [state.activeRegulator],
         as_of_date: state.activeAsOfDate || null,
-        requested_depth: state.activeDepth || "concise"
+        requested_depth: state.activeDepth || "concise",
+        attachment: attachment
       }),
       signal: activeChatAbortController.signal
     });
@@ -969,7 +1129,7 @@ async function sendChatMessage(queryText) {
     activeChatAbortController = null;
     DOM.btnSend.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 4L12 20M12 4L6 10M12 4L18 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     DOM.btnSend.setAttribute("title", "Send message");
-    DOM.btnSend.disabled = !DOM.chatTextarea.value.trim();
+    DOM.btnSend.disabled = !DOM.chatTextarea.value.trim() && !state.selectedChatAttachment;
   }
 }
 
@@ -1442,6 +1602,22 @@ function initEventListeners() {
       }
       sendChatMessage();
     });
+
+    // Drag and Drop File Attachments
+    DOM.chatForm.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      DOM.chatForm.classList.add("drag-over");
+    });
+    DOM.chatForm.addEventListener("dragleave", () => {
+      DOM.chatForm.classList.remove("drag-over");
+    });
+    DOM.chatForm.addEventListener("drop", (e) => {
+      e.preventDefault();
+      DOM.chatForm.classList.remove("drag-over");
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        uploadChatAttachment(e.dataTransfer.files[0]);
+      }
+    });
   }
 
   if (DOM.chatTextarea) {
@@ -1455,21 +1631,28 @@ function initEventListeners() {
     DOM.chatTextarea.addEventListener("input", () => {
       DOM.chatTextarea.style.height = "auto";
       DOM.chatTextarea.style.height = Math.min(DOM.chatTextarea.scrollHeight, 180) + "px";
-      if (DOM.btnSend) DOM.btnSend.disabled = !DOM.chatTextarea.value.trim();
+      if (DOM.btnSend) DOM.btnSend.disabled = !DOM.chatTextarea.value.trim() && !state.selectedChatAttachment;
     });
   }
 
-  // Attach File Button (opens KB modal for Admin)
-  if (DOM.btnAttachFile) {
+  // Attach File to Chat Button (ChatGPT 4o style)
+  if (DOM.btnAttachFile && DOM.chatFileInput) {
     DOM.btnAttachFile.addEventListener("click", () => {
-      const account = getActiveAccount();
-      if (account && account.role === "admin") {
-        if (DOM.adminKbModal) DOM.adminKbModal.classList.remove("hidden");
-        loadAdminDocuments();
-      } else {
-        alert("Document ingestion is enabled for Admin accounts. Please sign in with an Admin account or use the Quick Admin Login.");
+      DOM.chatFileInput.click();
+    });
+  }
+
+  if (DOM.chatFileInput) {
+    DOM.chatFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        uploadChatAttachment(file);
       }
     });
+  }
+
+  if (DOM.btnRemoveAttachment) {
+    DOM.btnRemoveAttachment.addEventListener("click", clearChatAttachment);
   }
 
   // Mic Button
@@ -1508,7 +1691,50 @@ function initEventListeners() {
     });
   }
 
-  // Auth Modal & Trigger
+  // ==================== LANDING AUTH SCREEN LISTENERS ====================
+  if (DOM.landingBtnToggleMode) {
+    DOM.landingBtnToggleMode.addEventListener("click", () => {
+      setLandingAuthMode(!state.isLandingAuthModeRegister);
+    });
+  }
+
+  if (DOM.landingAuthForm) {
+    DOM.landingAuthForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const email = DOM.landingEmailInput ? DOM.landingEmailInput.value.trim() : "";
+      const password = DOM.landingPasswordInput ? DOM.landingPasswordInput.value : "";
+      if (state.isLandingAuthModeRegister) {
+        const name = (DOM.landingNameInput ? DOM.landingNameInput.value.trim() : "") || email.split("@")[0];
+        registerUser(name, email, password);
+      } else {
+        loginUser(email, password);
+      }
+    });
+  }
+
+  if (DOM.landingBtnCustomer) {
+    DOM.landingBtnCustomer.addEventListener("click", () => {
+      loginUser("customer@idfcbank.com", "Customer@123");
+    });
+  }
+
+  if (DOM.landingBtnAdmin) {
+    DOM.landingBtnAdmin.addEventListener("click", () => {
+      loginUser("admin@idfcbank.com", "Admin@12345");
+    });
+  }
+
+  if (DOM.landingBtnDevesh) {
+    DOM.landingBtnDevesh.addEventListener("click", () => {
+      googleLogin("devesh.pandey1405@gmail.com", "devesh pandey1405");
+    });
+  }
+
+  if (DOM.landingBtnGoogle) {
+    DOM.landingBtnGoogle.addEventListener("click", () => googleLogin());
+  }
+
+  // ==================== IN-APP AUTH MODAL & TRIGGER ====================
   if (DOM.btnAuthTrigger) {
     DOM.btnAuthTrigger.addEventListener("click", () => {
       const active = getActiveAccount();
@@ -1537,7 +1763,7 @@ function initEventListeners() {
     });
   }
 
-  // Demo Login Buttons
+  // Demo Login Buttons in Modal
   if (DOM.btnQuickCustomer) {
     DOM.btnQuickCustomer.addEventListener("click", () => {
       loginUser("customer@idfcbank.com", "Customer@123");
@@ -1671,11 +1897,13 @@ function initEventListeners() {
 // Initial Boot Orchestrator
 async function bootApp() {
   loadAccountsFromStorage();
-  await validateOrRefreshToken();
+  const token = await validateOrRefreshToken();
   updateUIForAuth();
   initEventListeners();
   initSpeechRecognition();
-  await loadConversations();
+  if (token) {
+    await loadConversations();
+  }
 }
 
 if (document.readyState === "loading") {

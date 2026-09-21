@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -134,21 +134,41 @@ class ConversationRename(BaseModel):
             raise ValueError("Title cannot be empty or whitespace only")
         return s
 
+class ChatAttachmentInfo(BaseModel):
+    id: Optional[str] = None
+    filename: str
+    original_name: Optional[str] = None
+    file_type: str
+    file_size: Optional[int] = None
+    extracted_text: Optional[str] = None
+    file_url: Optional[str] = None
+
+    @model_validator(mode="after")
+    def populate_original_name(self) -> "ChatAttachmentInfo":
+        if not self.original_name:
+            self.original_name = self.filename
+        return self
+
+class ChatAttachmentUploadResponse(BaseModel):
+    attachment: ChatAttachmentInfo
+
 class ChatQueryRequest(BaseModel):
     conversation_id: Optional[str] = None
-    query: str = Field(..., min_length=1)
+    query: Optional[str] = None
+    attachment: Optional[ChatAttachmentInfo] = None
     regulator_filter: Optional[List[str]] = None # ["ALL"] or ["RBI", "SEBI", "IRDAI", "INTERNAL"]
     as_of_date: Optional[str] = None # ISO format "YYYY-MM-DD" or None for current active rules
     department_filter: Optional[str] = None
     requested_depth: Optional[str] = "concise" # concise, detailed, comparison
 
-    @field_validator("query")
-    @classmethod
-    def validate_query(cls, v: str) -> str:
-        s = v.strip()
-        if not s:
+    @model_validator(mode="after")
+    def validate_payload(self) -> "ChatQueryRequest":
+        q = (self.query or "").strip()
+        if not q and not self.attachment:
             raise ValueError("Query cannot be empty or whitespace only")
-        return s
+        if not q and self.attachment:
+            self.query = "Analyze this attached file and provide detailed regulatory and banking insights."
+        return self
 
 class ChatQueryResponse(BaseModel):
     conversation_id: str
@@ -162,12 +182,13 @@ class ChatQueryResponse(BaseModel):
     regulator_scope: str = "ALL"
     as_of_date_applied: Optional[str] = None
     answer: str
-    source_type: str # DATABASE, KNOWLEDGE_BASE, DATABASE_AND_KNOWLEDGE_BASE, NO_SUPPORTED_SOURCE
+    source_type: str # DATABASE, KNOWLEDGE_BASE, DATABASE_AND_KNOWLEDGE_BASE, ATTACHMENT_EXAMINATION, NO_SUPPORTED_SOURCE
     confidence: float
     citations: List[CitationItem] = []
     ambiguity_flags: List[AmbiguityFlag] = []
     clarification_needed: bool = False
     tokens_used: Optional[Dict[str, int]] = None
+    attachment: Optional[ChatAttachmentInfo] = None
 
 # --- Admin Knowledge Base & MIS Schemas ---
 class KnowledgeDocumentResponse(BaseModel):

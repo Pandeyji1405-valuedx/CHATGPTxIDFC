@@ -1,18 +1,61 @@
+import os
+import uuid
 import json
 import re
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import User, Conversation, Message, Response, Entity, AuditLog, get_utc_now
 from backend.schemas import (
     ChatQueryRequest, ChatQueryResponse, CitationItem, AmbiguityFlag,
-    ChatFeedbackRequest, ChatFeedbackResponse
+    ChatFeedbackRequest, ChatFeedbackResponse, ChatAttachmentInfo, ChatAttachmentUploadResponse
 )
 from backend.auth import get_current_user
 from backend.rag.rag_engine import rag_engine
+from backend.config import settings
+from backend.ingestion.extractor import document_extractor
 
 router = APIRouter(prefix="/api/chat", tags=["Chat & RAG"])
+
+@router.post("/upload-attachment", response_model=ChatAttachmentUploadResponse)
+async def upload_chat_attachment(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Uploads and extracts multimodal file content (PDF, Image, Voice/Audio, DOCX, CSV, Text)
+    for in-depth conversational examination in chat, exactly like ChatGPT.
+    """
+    filename = file.filename or "uploaded_attachment.pdf"
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file payload is empty."
+        )
+
+    # Save to user chat attachments dir
+    chat_att_dir = os.path.join(settings.UPLOAD_DIR, "chat_attachments")
+    os.makedirs(chat_att_dir, exist_ok=True)
+    saved_filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+    file_path = os.path.join(chat_att_dir, saved_filename)
+    with open(file_path, "wb") as f:
+        f.write(file_bytes)
+
+    # Extract text, OCR, or transcript
+    extracted = document_extractor.extract(file_bytes, filename)
+    ext = filename.lower().split(".")[-1] if "." in filename else "file"
+
+    att = ChatAttachmentInfo(
+        id=str(uuid.uuid4()),
+        filename=filename,
+        file_type=ext,
+        file_size=len(file_bytes),
+        extracted_text=extracted.get("full_text", ""),
+        file_url=f"/static/uploads/chat_attachments/{saved_filename}"
+    )
+    return ChatAttachmentUploadResponse(attachment=att)
 
 def generate_chat_title(query: str, entities: list) -> str:
     """Generates a concise 3-6 word conversation title without sensitive details."""
@@ -41,16 +84,12 @@ def handle_chat_query(
     Core RAG Chat Endpoint:
     - Normalizes user query & resolves conversational references/pronouns.
     - Searches Conversation Database (Layer 1) & Approved Multi-Regulator Knowledge Base (Layer 2).
+    - Supports multimodal user attachments (PDF, OCR Image, Voice, Audio, Documents) for deep analysis.
     - Grounded Answer Synthesis, Token Budgeting, Response Composition & Fact Validation.
     - Stores messages, entities, source citations, and OCR ambiguity flags.
     - Zero-internet policy strictly enforced.
     """
-    raw_query = req.query.strip()
-    if not raw_query:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Query cannot be empty"
-        )
+    raw_query = req.query.strip() if req.query else "Analyze this attached file and provide detailed regulatory insights."
 
     # 1. Get or Create Conversation
     conversation = None
@@ -76,13 +115,15 @@ def handle_chat_query(
     from backend.rag.nlp_engine import nlp_engine
     user_name = nlp_engine.extract_friendly_user_name(current_user.name, current_user.email)
 
-    # 3. Run Multi-Regulator 2-Layer RAG Pipeline with Token Budgeting & Response Composer
+    # 3. Run Multi-Regulator 2-Layer RAG Pipeline with Attachment Support
+    att_dict = req.attachment.model_dump() if req.attachment else None
     rag_result = rag_engine.process_query(
         db=db,
         user_id=current_user.id,
         user_name=user_name,
         conversation_id=conversation.id,
         raw_query=raw_query,
+        attachment_context=att_dict,
         regulator_filter=req.regulator_filter,
         as_of_date=req.as_of_date,
         department_filter=req.department_filter,
@@ -181,7 +222,8 @@ def handle_chat_query(
         citations=[CitationItem(**c) for c in rag_result["citations"]],
         ambiguity_flags=[AmbiguityFlag(**a) for a in rag_result["ambiguity_flags"]],
         clarification_needed=rag_result["clarification_needed"],
-        tokens_used=tokens_dict
+        tokens_used=tokens_dict,
+        attachment=req.attachment
     )
 
 @router.post("/feedback", response_model=ChatFeedbackResponse)

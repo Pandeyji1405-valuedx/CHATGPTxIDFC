@@ -66,8 +66,8 @@ def login_user(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account does not exist. Please sign up."
         )
 
     # If user was created via Google OAuth / without password, set password on first explicit login
@@ -77,7 +77,7 @@ def login_user(
     elif not verify_password(req.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail="Incorrect password. Please try again."
         )
 
     # Audit log

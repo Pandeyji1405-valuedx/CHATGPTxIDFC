@@ -1,13 +1,15 @@
-# CHATGPTxIDFC — Production Banking Conversational AI
+# IDFC Advisory Assistant — Governed RBI Compliance Platform & Conversational AI
 
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
-[![Coverage](https://img.shields.io/badge/Coverage-85%25-brightgreen.svg)](tests/)
-[![Tests](https://img.shields.io/badge/Tests-35%20Passed-success.svg)](tests/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.0-009688.svg?style=flat&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19.2%20%7C%20TypeScript-61DAFB.svg?style=flat&logo=react&logoColor=black)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF.svg?style=flat&logo=vite&logoColor=white)](https://vitejs.dev)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15%2B%20%7C%20pgvector-336791.svg?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Redis](https://img.shields.io/badge/Redis-7.0%2B-DC382D.svg?style=flat&logo=redis&logoColor=white)](https://redis.io)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-0.6-FF6F00.svg)](https://www.trychroma.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Architecture: Two--Layer%20RAG](https://img.shields.io/badge/Architecture-Two--Layer%20RAG-darkred.svg)](architecture.md)
 
-A production-quality banking conversational AI assistant engineered with a modern ChatGPT-style user experience, strict source-controlled knowledge grounding, two-layer RAG architecture, OCR with character ambiguity detection, multi-account isolation, and a zero-internet answering policy.
+An enterprise regulatory compliance intelligence and banking conversational AI platform for IDFC FIRST Bank. Engineered with strict source-controlled knowledge grounding, multi-tier cost-saving caching, hybrid retrieval (ChromaDB + PostgreSQL FTS), BGE reranking, anti-hallucination guardrails, multi-account isolation, and a zero-internet answering policy.
 
 ---
 
@@ -16,45 +18,49 @@ A production-quality banking conversational AI assistant engineered with a moder
 ```text
                                ┌─────────────────────────────────────────┐
                                │             User / Client               │
-                               │  (ChatGPT UI / Voice / Multi-Account)   │
+                               │  (React 19 + TypeScript / Tailwind CSS) │
                                └────────────────────┬────────────────────┘
-                                                    │ User Query / Voice Input
+                                                    │ User Query / Audio Stream
                                                     ▼
                                ┌─────────────────────────────────────────┐
-                               │         FastAPI Chat Controller         │
+                               │       FastAPI Gateway & API v1          │
+                               │  • JWT Auth & Argon2id RBAC             │
+                               │  • PII Detection & Redaction            │
+                               │  • Audit Trail Logging                  │
                                └────────────────────┬────────────────────┘
                                                     │
                                                     ▼
                                ┌─────────────────────────────────────────┐
-                               │               NLP Engine                │
-                               │  • Hinglish Normalization               │
-                               │  • Entity & Intent Extraction           │
-                               │  • Pronoun & Coreference Resolution     │
+                               │       4-Tier Cost-Saving Cache          │
+                               ├─────────────────────────────────────────┤
+                               │ Tier 1: Redis Exact Cache (<100ms)      │
+                               │ Tier 2: PostgreSQL Exact Cache          │
+                               │ Tier 3: pgvector Semantic Cache (>0.92) │
+                               │ Tier 4: RAG Pipeline + Variant Warming  │
                                └────────────────────┬────────────────────┘
-                                                    │ Resolved Query
-                                                    ▼
-                             ┌─────────────────────────────────────────────┐
-                             │             Two-Layer RAG Engine            │
-                             ├──────────────────────┬──────────────────────┤
-                             │       Layer 1        │       Layer 2        │
-                             │   Conversation RAG   │    Banking KB RAG    │
-                             │ (User Chat History)  │ (16+ RBI Directions) │
-                             └──────────┬───────────┴──────────┬───────────┘
-                                        │                      │
-                                        └───────────┬──────────┘
-                                                    │ Retrieved Chunks & Context
+                                                    │ Cache Miss
                                                     ▼
                                ┌─────────────────────────────────────────┐
-                               │            Grounding Validator          │
-                               │  • Circular Number & Policy Check       │
-                               │  • Numeric / Amount Verification        │
-                               │  • Conflict Detection (Source A vs B)   │
-                               │  • Zero-Internet Fallback Guard         │
+                               │         Two-Layer RAG Engine            │
+                               ├────────────────────┬────────────────────┤
+                               │ Layer 1: Conv RAG  │ Layer 2: KB RAG    │
+                               │ Multi-turn Context │ Hybrid Dense/Sparse│
+                               │ Pronoun Resolution │ BGE Reranker v2-m3 │
+                               └──────────┬─────────┴──────────┬─────────┘
+                                          │                    │
+                                          └─────────┬──────────┘
+                                                    │ Candidate Chunks
+                                                    ▼
+                               ┌─────────────────────────────────────────┐
+                               │       Evidence Gate & Generator         │
+                               │  • Circular & Policy Verification       │
+                               │  • Grounded Google Gemini 3.6 Flash     │
+                               │  • Hallucination Fallback Guard         │
                                └────────────────────┬────────────────────┘
                                                     │ Verified Grounded Answer
                                                     ▼
                                ┌─────────────────────────────────────────┐
-                               │           Response & Citations          │
+                               │          Response & Citations           │
                                │  • Formatted Markdown Output            │
                                │  • Interactive Citation Badges          │
                                │  • OCR Character Ambiguity Flags        │
@@ -63,170 +69,196 @@ A production-quality banking conversational AI assistant engineered with a moder
 
 ---
 
-## ✨ Key Features
+## ✨ Key Capabilities & Features
 
-1. **ChatGPT-like User Interface**:
-   - Modern sleek banking theme (IDFC burgundy `#97144D` & obsidian `#0d1117` palette, glassmorphism, Inter typography).
-   - Sidebar conversation management with date grouping (*Today, Yesterday, Previous 7 Days*), search, inline renaming, and deletion.
-   - Auto-generated conversation titles based on query intent.
-   - Responsive message stream with markdown formatting, copy button, and interactive citation badges.
+1. **Enterprise React 19 Frontend**:
+   - Built with Vite, TypeScript, and Tailwind CSS.
+   - Clean dark/light themes tailored with IDFC Burgundy `#97144D` accents.
+   - Dynamic conversation sidebar with search, auto-naming, and history grouping.
+   - Admin Document Management portal with drag-and-drop upload and real-time ingestion status.
+   - Account switcher with multi-tenant row-level data isolation.
 
-2. **Two-Layer RAG System**:
-   - **Layer 1 (Conversation DB RAG)**: Searches historical user interactions, performs coreference/pronoun resolution (*"its limit"* $\rightarrow$ *"NEFT limit"*, *"his age"* $\rightarrow$ *"Sachin Tendulkar's age"*), and extracts banking entities.
-   - **Layer 2 (Banking Knowledge Base RAG)**: Hybrid TF-IDF / dense vector retrieval + exact circular matching over 16+ curated official RBI Master Directions and IDFC FIRST Bank policies.
+2. **Hybrid Retrieval & Reranking Engine**:
+   - **Dense Vector Search**: ChromaDB with Nomic Embed v1.5 (768-dim embeddings).
+   - **Sparse Full-Text Search**: PostgreSQL FTS (`tsvector`) and TF-IDF fallback.
+   - **BGE Reranker v2-m3**: High-precision semantic reranker with strict relevance score thresholds.
 
-3. **Strict Zero-Internet Answering Policy**:
-   - Web access is strictly restricted to administrative knowledge base ingestion.
+3. **4-Tier Cost-Saving Cache Cascade**:
+   - **Tier 1 (Redis Exact Cache)**: Sub-100ms response for identical query strings.
+   - **Tier 2 (PostgreSQL Exact Cache)**: Secondary database exact lookup.
+   - **Tier 3 (PostgreSQL `pgvector` Semantic Cache)**: Cosine similarity search ($\ge 0.92$) for paraphrased queries.
+   - **Tier 4 (Full RAG Pipeline)**: Executed on cache MISS, with automated **LLM Question Variant Generation** to pre-warm future paraphrases.
+
+4. **Strict Grounding & Zero-Internet Policy**:
    - User chat requests **never** invoke external search engines or unverified internet data.
-   - If reliable approved sources cannot be retrieved, the system returns a controlled fallback:
-     > *"I couldn't find sufficient verified information in the approved knowledge base or your conversation history to answer this accurately."*
+   - If reliable approved sources cannot be retrieved, the system returns a safe, controlled fallback.
 
-4. **OCR & Banking Character Ambiguity Engine**:
-   - Scanned PDF and image extraction with text-layer detection.
+5. **OCR & Banking Character Ambiguity Engine**:
+   - Scanned PDF and image extraction with text-layer detection via PyMuPDF.
    - Scans for visually ambiguous characters in critical banking fields (`0` vs `O`, `1` vs `I`/`l`, `5` vs `S`, `2` vs `Z`, `8` vs `B`) in circular IDs, dates, and amounts.
-   - Flags ambiguity warnings in citations for human verification against original documents.
 
-5. **Multi-Account Authentication & Data Isolation**:
-   - JWT tokens with bcrypt password hashing + Google OAuth integration.
-   - Account Switcher: Manage and switch between multiple logged-in accounts instantly.
-   - Strict application-level row isolation preventing any cross-user conversation crosstalk (`WHERE user_id == current_user.id`).
-
-6. **Speech-to-Text (STT) & Text-to-Speech (TTS)**:
-   - Voice input via Web Speech API with an editable review bar before query submission.
-   - "🔊 Read Aloud" synthesis on assistant responses.
-
-7. **Admin Knowledge Base Portal**:
-   - Document upload for PDF, DOCX, TXT, CSV, and images.
-   - Page-by-page OCR inspection, chunk counts, ambiguity notes, and one-click re-indexing.
+6. **Enterprise Security & Compliance**:
+   - Argon2id password hashing + JWT authentication.
+   - Role-Based Access Control (RBAC: `ADMIN` for document upload/management; `USER` for chat).
+   - PII Detection & Redaction middleware.
+   - Complete Audit Trail Logging & User Feedback collection.
 
 ---
 
-## 📁 Repository Structure
+## 🛠️ Technology Stack
+
+| Layer | Technology | Version / Model |
+|---|---|---|
+| **Frontend Framework** | React + TypeScript | 19.2 / TS 6.0 |
+| **Frontend Build & Styling** | Vite + Tailwind CSS | 8.3 / 3.4 |
+| **Backend Framework** | FastAPI + Uvicorn | 0.115 / 0.34 |
+| **Backend Runtime** | Python | 3.11+ |
+| **Database & ORM** | PostgreSQL 15+ + SQLAlchemy 2.0 (async) / SQLite | `asyncpg` / `psycopg2` |
+| **Vector Cache Engine** | PostgreSQL `pgvector` | 0.5+ |
+| **Vector Database** | ChromaDB | 0.6 |
+| **Session Memory & Cache** | Redis | 7.0+ |
+| **PDF Extraction** | PyMuPDF (`fitz`) | 1.25 |
+| **Embeddings Model** | Nomic Embed v1.5 | `nomic-ai/nomic-embed-text-v1.5` (768-dim) |
+| **Reranker Model** | BGE Reranker v2-m3 | `BAAI/bge-reranker-v2-m3` |
+| **LLM Generator** | Google Gemini | `gemini-3.6-flash` |
+| **Password Hashing** | Argon2id (`argon2-cffi`) / bcrypt | 23.1 |
+| **JWT Security** | `python-jose[cryptography]` | 3.5 |
+
+---
+
+## 📂 Project Structure
 
 ```text
 CHATGPTxIDFC/
-├── .github/
-│   └── workflows/
-│       └── ci.yml               # GitHub Actions CI Workflow
 ├── backend/
-│   ├── main.py                  # FastAPI server & static file mounting
-│   ├── config.py                # Environment & tuning settings
-│   ├── database.py              # SQLite with WAL mode & session manager
-│   ├── models.py                # SQLAlchemy ORM models
-│   ├── schemas.py               # Pydantic v2 validation models
-│   ├── auth.py                  # JWT auth, password hashing & dependencies
-│   ├── routers/
-│   │   ├── auth_router.py       # Auth endpoints (register, login, google, me)
-│   │   ├── chat_router.py       # Main 2-Layer RAG chat endpoint
-│   │   ├── conversations_router.py # Conversation CRUD & search
-│   │   ├── admin_router.py      # Knowledge Base admin portal endpoints
-│   │   └── speech_router.py     # Speech STT & TTS endpoints
-│   ├── rag/
-│   │   ├── nlp_engine.py        # NLP, entity extraction & pronoun resolution
-│   │   ├── vector_store.py      # Hybrid vector store (TF-IDF + Cosine + Exact boost)
-│   │   ├── validator.py         # Grounding & anti-hallucination fact validator
-│   │   └── rag_engine.py        # Two-Layer RAG pipeline coordinator
-│   └── ingestion/
-│       ├── extractor.py         # Multi-format document text & image extractor
-│       ├── ocr_engine.py        # OCR & character ambiguity detection
-│       ├── chunker.py           # Semantic paragraph & section chunker
-│       └── seed_rbi_kb.py       # Curated 16+ RBI & IDFC knowledge seeder
+│   ├── app/
+│   │   ├── api/v1/
+│   │   │   ├── auth.py          # /register, /login, /me, /protected
+│   │   │   ├── chat.py          # /message, /conversations, /conversations/{id}
+│   │   │   ├── documents.py     # /upload (ADMIN async background), /documents, /versions
+│   │   │   ├── feedback.py      # User feedback collection
+│   │   │   └── health.py        # /health
+│   │   ├── auth/                # JWT creation/decoding, Argon2id hashing, role dependencies
+│   │   ├── core/config.py       # Pydantic Settings (DB, Redis, Gemini, Chroma, Models)
+│   │   ├── db/                  # Async SQLAlchemy engine & session factory
+│   │   ├── models/              # User, Document, DocumentVersion, Cache, Audit, Feedback ORM models
+│   │   ├── schemas/             # Pydantic schemas for request/response payloads
+│   │   └── services/
+│   │       ├── auth_service.py  # Auth & user business logic
+│   │       ├── cache/           # 4-tier cache cascade, Redis service, Contextualizer, Variants
+│   │       ├── chunking/        # Deterministic page-aware chunker
+│   │       ├── documents/       # Async document ingestion orchestrator & storage repo
+│   │       ├── embeddings/      # Nomic Embed v1.5 embedding service
+│   │       ├── pdf/             # PyMuPDF extractor, text cleaner, PDF validator
+│   │       ├── rag/             # Hybrid retriever, BGE reranker, Evidence Gate, Gemini generator
+│   │       ├── security/        # PII redaction, audit logging, rate limiter
+│   │       └── vector_db/       # ChromaDB vector collection service
+│   │   └── main.py              # FastAPI app initialization & middleware wiring
+│   ├── alembic/                 # Database migrations (001 to 006)
+│   ├── tests/                   # Pytest automated unit & integration tests
+│   ├── requirements.txt
+│   └── .env.example
+│
 ├── frontend/
-│   ├── index.html               # ChatGPT-style UI
-│   ├── style.css                # Sleek dark/light banking theme
-│   └── app.js                   # Client state, voice & API coordinator
-├── tests/
-│   ├── conftest.py              # Test database and client fixtures
-│   ├── test_auth.py             # Auth & Google OAuth tests
-│   ├── test_isolation.py        # Multi-account isolation tests
-│   ├── test_conversation_rag.py # Pronoun resolution & Hinglish tests
-│   ├── test_kb_rag.py           # RBI circulars & regulations RAG tests
-│   ├── test_ocr_ambiguity.py    # OCR ambiguity detection tests
-│   ├── test_hallucination_guard.py # Zero-internet & fallback tests
-│   ├── test_security_prompt_injection.py # Security & RBAC tests
-│   └── test_speech.py           # STT & TTS endpoint tests
-├── architecture.md              # In-depth technical system specifications
-├── CONTRIBUTING.md              # Contribution guidelines & workflows
-├── SECURITY.md                  # Security policies & airgap guarantees
-├── CHANGELOG.md                 # Release notes & version history
-├── LICENSE                      # MIT License
-├── pyproject.toml               # Python project configuration
-├── requirements.txt             # Python dependencies
-└── .env.example                 # Environment variable templates
+│   ├── src/
+│   │   ├── auth/                # Token management & authService
+│   │   ├── components/          # Navbar, ProtectedRoute, HealthStatus, Sidebar, AppLayout
+│   │   ├── context/             # AuthContext & useAuth hook
+│   │   ├── pages/               # AdminDocumentsPage, ChatPage, LandingPage, Login, Register
+│   │   ├── services/            # Axios client, chatService, documentService
+│   │   └── types/               # TypeScript interfaces (chat, auth, documents)
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── .env.example
+│
+├── docs/                        # Architecture diagrams & implementation specs
+├── tests/                       # Root test suite
+├── .gitignore                   # Root ignore rules
+└── README.md
 ```
 
 ---
 
-## 🚀 Quickstart & Execution
+## ⚙️ Quick Start & Setup Guide
 
-### 1. Clone & Set Up Virtual Environment
+### 1. Prerequisites
 
-```bash
-git clone https://github.com/Pandeyji1405-valuedx/CHATGPTxIDFC.git
-cd CHATGPTxIDFC
+- **Python 3.11+**
+- **Node.js 18+ & npm 9+**
+- **PostgreSQL 15+** (with `pgvector` extension) or SQLite
+- **Redis 7.0+** (Optional / Fallbacks to In-Memory LRU)
 
-# Create and activate virtual environment
-python -m venv venv
+### 2. Backend Setup
 
-# Windows (PowerShell):
-.\venv\Scripts\Activate.ps1
+```powershell
+# Navigate to project root or backend
+cd c:\CHATGPTxIDFC
 
-# Linux / macOS:
-source venv/bin/activate
-```
+# Create & activate virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1   # Windows PowerShell
 
-### 2. Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
+pip install -r backend/requirements.txt
+
+# Configure environment variables
+Copy-Item .env.example .env
+# Edit .env and supply your DATABASE_URL, REDIS_URL, and GEMINI_API_KEY
+
+# Run database migrations
+alembic upgrade head
+
+# Start FastAPI dev server
+uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 3. Configure Environment Variables
+- Backend API: `http://localhost:8000`
+- Interactive Swagger Docs: `http://localhost:8000/docs`
 
-```bash
-cp .env.example .env
+### 3. Frontend Setup
+
+```powershell
+# Open a new terminal and navigate to frontend
+cd frontend
+
+# Install dependencies
+npm install
+
+# Create environment configuration
+Copy-Item .env.example .env
+
+# Start Vite development server
+npm run dev
 ```
 
-### 4. Run the Application
-
-```bash
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-Open your browser at: **`http://127.0.0.1:8000`**
-
-#### Default Demo Credentials:
-- **Customer User**: `customer@idfcbank.com` / `Customer@123`
-- **Admin User**: `admin@idfcbank.com` / `Admin@12345`
+- Frontend client runs at: `http://localhost:5173`
 
 ---
 
 ## 🧪 Automated Testing
 
-Run the full automated test suite (35 unit and integration tests):
+Run the full automated test suite:
 
-```bash
+```powershell
+# Run backend tests
+pytest backend/tests/ -v
+
+# Run root tests
 pytest tests/ -v
 ```
 
-Generate a test coverage report:
+---
 
-```bash
-pytest --cov=backend --cov-report=term-missing tests/
-```
+## 🔒 Security & Compliance
+
+- **No Hardcoded Secrets**: All keys, passwords, and tokens are loaded strictly via environment variables.
+- **Role-Based Guards**: Document upload requires the `ADMIN` role. Regular users can only access chat and view approved documents.
+- **PII Protection**: Dynamic redaction strips sensitive personal identifiers prior to prompt assembly.
+- **Audit Traceability**: Immutable database audit logs record user actions, logins, uploads, and queries with tenant correlation.
 
 ---
 
-## 📄 Documentation Links
+## 📄 License
 
-- [Architecture Specification](architecture.md)
-- [Contributing Guidelines](CONTRIBUTING.md)
-- [Security Policy](SECURITY.md)
-- [Changelog](CHANGELOG.md)
-- [License](LICENSE)
-
----
-
-## 🛡️ License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Internal Tool — Property of IDFC Bank. All rights reserved.

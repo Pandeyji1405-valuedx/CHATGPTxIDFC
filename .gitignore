@@ -1,14 +1,56 @@
-# Byte-compiled / optimized / DLL files
+# ============================================================
+# Root .gitignore for IDFC Advisory Assistant / RBI Compliance Platform
+# ============================================================
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment secrets (NEVER commit these)
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+*.pem
+*.key
+
+# Local Data Stores, Vector DBs & Database Files
+storage/
+backend/storage/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/test_banking_rag.db
+data/uploads/*
+!data/uploads/.gitkeep
+data/kb/*
+!data/kb/.gitkeep
+
+# Temporary / Scratch files
+zz
+scratch/
+
+# Python & Backend
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# C extensions
 *.obj
 *.o
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -26,36 +68,23 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual Environments
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/coverage.xml
+backend/dist/
+backend/build/
+backend/*.egg-info/
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
 .venv/
-
-# Environment Variables & Secrets
-.env
-.env.local
-.env.*.local
-*.pem
-*.key
-
-# Database Files
-*.db
-*.db-wal
-*.db-shm
-*.sqlite
-*.sqlite3
-data/*.db
-data/*.db-wal
-data/*.db-shm
-data/test_banking_rag.db
-data/uploads/*
-!data/uploads/.gitkeep
-data/kb/*
-!data/kb/.gitkeep
 
 # Unit test / coverage reports
 .coverage
@@ -69,14 +98,11 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# IDE & Editor files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
+# Node & Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+node_modules/
 
 # Logs
 *.log

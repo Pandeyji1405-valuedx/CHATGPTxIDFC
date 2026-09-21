@@ -6,14 +6,15 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from backend.config import settings
-from backend.database import engine, Base
-from backend.routers import auth_router, conversations_router, chat_router, admin_router, speech_router
+from backend.database import engine, Base, init_and_migrate_db
+from backend.routers import auth_router, conversations_router, chat_router, admin_router, speech_router, feedback_router
 from backend.ingestion.seed_rbi_kb import seed_database_and_vector_store
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize DB and seed initial knowledge base + vector store
     print("Starting CHATGPTxIDFC Banking RAG Application...")
+    init_and_migrate_db(engine)
     seed_database_and_vector_store()
     yield
     print("Shutting down CHATGPTxIDFC...")
@@ -65,6 +66,7 @@ app.include_router(conversations_router.router)
 app.include_router(chat_router.router)
 app.include_router(admin_router.router)
 app.include_router(speech_router.router)
+app.include_router(feedback_router.router)
 
 # Serve Frontend Static Assets
 frontend_dir = os.path.join(settings.BASE_DIR, "frontend")

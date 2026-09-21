@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import hashlib
 from typing import List, Dict, Any
 from reportlab.lib.pagesizes import letter
@@ -110,6 +111,35 @@ REAL_OFFICIAL_DIRECTIVES: List[Dict[str, Any]] = [
                     "name, address, and contact details of the borrower) necessary for carrying out operations. Access to mobile phone resources "
                     "such as contacts list, call logs, telephony functions, and media storage is strictly prohibited. One-time access to camera, "
                     "microphone, and location may be taken solely for KYC onboarding with explicit borrower consent."
+                )
+            }
+        ]
+    },
+    {
+        "filename": "RBI_Housing_Finance_LTV_Limits.pdf",
+        "title": "RBI Master Circular - Housing Finance and Individual Housing Loans - LTV Ratios and Risk Weights",
+        "notification_number": "RBI/2015-16/194 DBR.No.BP.BC.44/08.12.015/2015-16",
+        "publication_date": "2015-10-08",
+        "effective_date": "2015-10-08",
+        "effective_from": "2015-10-08",
+        "regulator": "RBI",
+        "source": "RBI",
+        "source_url": "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=10068",
+        "sections": [
+            {
+                "heading": "Section 1: Loan to Value (LTV) Ratio Limits for Individual Housing Loans",
+                "content": (
+                    "As per RBI Master Circular on Housing Finance, the maximum Loan to Value (LTV) ratio applicable for individual housing loans is:\n"
+                    "1. For housing loans up to ₹30 Lakhs: Maximum LTV ratio is 90% (with standard risk weight of 35%).\n"
+                    "2. For housing loans above ₹30 Lakhs and up to ₹75 Lakhs: Maximum LTV ratio is 80% (risk weight of 35% for LTV <= 75%, and 50% for LTV > 75% and <= 80%).\n"
+                    "3. For housing loans above ₹75 Lakhs: Maximum LTV ratio is 75% (with standard risk weight of 50%).\n"
+                    "Banks shall not include stamp duty, registration charges, and other documentation charges in the cost of the housing property for calculating the LTV ratio, except where the cost of the house does not exceed ₹10 Lakhs."
+                )
+            },
+            {
+                "heading": "Section 2: Valuation and Risk Weights Framework",
+                "content": (
+                    "Banks must have a Board-approved valuation policy for real estate properties accepted as collateral. Independent valuation reports by approved valuers are mandatory for loans exceeding ₹50 Lakhs."
                 )
             }
         ]
@@ -421,7 +451,10 @@ REAL_OFFICIAL_DIRECTIVES: List[Dict[str, Any]] = [
         "notification_number": "RBI/2024-25/0O18",
         "publication_date": "2024-04-10",
         "effective_date": "2024-04-10",
+        "effective_from": "2024-04-10",
+        "regulator": "RBI",
         "source": "RBI",
+        "status": "active",
         "source_url": "https://www.rbi.org.in/ocr-scanned-archive",
         "is_ocr": True,
         "sections": [
@@ -431,6 +464,184 @@ REAL_OFFICIAL_DIRECTIVES: List[Dict[str, Any]] = [
                     "All Scheduled Commercial Banks must verify regulatory circular code RBI/2024-25/0O18.\n"
                     "The threshold transaction limit is fixed at ₹SO,OOO (Fifty Thousand Rupees) with a penalty interest rate of B.5% for non-compliance.\n"
                     "Note: Ambiguity in scanned characters 0O18 and ₹SO,OOO requires manual verification against physical register."
+                )
+            }
+        ]
+    },
+    {
+        "filename": "SEBI_LODR_Regulations_2024.pdf",
+        "title": "SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015 (Updated 2024)",
+        "notification_number": "SEBI/LAD-NRO/GN/2024/167",
+        "publication_date": "2024-01-20",
+        "effective_date": "2024-01-20",
+        "effective_from": "2024-01-20",
+        "regulator": "SEBI",
+        "source": "SEBI",
+        "status": "active",
+        "source_url": "https://www.sebi.gov.in/legal/regulations/jan-2024/sebi-lodr-regulations-2024.pdf",
+        "sections": [
+            {
+                "heading": "Section 1: Materiality Thresholds for Event Disclosures",
+                "content": (
+                    "Listed entities shall promptly disclose events or information which are material. Under Regulation 30, an event is deemed "
+                    "material if omission results in significant market reaction or the impact exceeds any of the following quantitative criteria:\n"
+                    "1. 2% of turnover, as per the last audited consolidated financial statements;\n"
+                    "2. 2% of net worth, as per the last audited consolidated financial statements;\n"
+                    "3. 5% of the average of absolute value of profit or loss after tax, as per the last three audited consolidated financial statements."
+                )
+            },
+            {
+                "heading": "Section 2: Related Party Transactions (RPT) Governance",
+                "content": (
+                    "All Related Party Transactions (RPT) and subsequent material modifications require prior approval of the Audit Committee. "
+                    "Only independent members of the Audit Committee shall approve RPTs. A transaction with a related party is considered material "
+                    "if the transaction amount exceeds ₹1,000 Crore or 10% of the annual consolidated turnover of the listed entity, whichever is lower, "
+                    "and requires prior approval of shareholders via ordinary resolution."
+                )
+            },
+            {
+                "heading": "Section 3: Board Composition and Independent Directors",
+                "content": (
+                    "The Board of Directors of the top 1000 listed entities shall comprise not less than 6 directors and include at least one independent "
+                    "woman director. At least 50% of the Board of Directors shall consist of non-executive directors. Where the Chairperson is executive, "
+                    "at least half of the Board shall comprise independent directors."
+                )
+            }
+        ]
+    },
+    {
+        "filename": "SEBI_Cybersecurity_Framework_Intermediaries_2023.pdf",
+        "title": "SEBI Cybersecurity and Cyber Resilience Framework for Stock Brokers & Depository Participants",
+        "notification_number": "SEBI/HO/MIRSD/TP/P/CIR/2023/145",
+        "publication_date": "2023-08-25",
+        "effective_date": "2023-08-25",
+        "effective_from": "2023-08-25",
+        "regulator": "SEBI",
+        "source": "SEBI",
+        "status": "active",
+        "source_url": "https://www.sebi.gov.in/legal/circulars/aug-2023/cybersecurity-framework-stock-brokers_75841.html",
+        "sections": [
+            {
+                "heading": "Section 1: Cyber Incident Reporting Window (6 Hours)",
+                "content": (
+                    "All stock brokers, depository participants, and qualified intermediaries must report any cyber incident, security breach, "
+                    "unauthorized access, or ransomware outbreak to SEBI and CERT-In within 6 hours of detecting the incident. A detailed Root "
+                    "Cause Analysis (RCA) and remediation plan must be submitted to SEBI within 14 calendar days of incident detection."
+                )
+            },
+            {
+                "heading": "Section 2: Periodic VAPT and Cyber Audits",
+                "content": (
+                    "Intermediaries must conduct Vulnerability Assessment and Penetration Testing (VAPT) at least twice a year (half-yearly) through "
+                    "CERT-In empaneled cybersecurity auditing firms. Intermediaries shall maintain a 24x7 Security Operations Centre (SOC) and mandate "
+                    "two-factor authentication (2FA) for all critical trading and back-office database access."
+                )
+            }
+        ]
+    },
+    {
+        "filename": "IRDAI_Cyber_Security_Guidelines_2023.pdf",
+        "title": "IRDAI Information and Cyber Security Guidelines for Insurers",
+        "notification_number": "IRDAI/IT/GDL/MISC/084/04/2023",
+        "publication_date": "2023-04-24",
+        "effective_date": "2023-04-24",
+        "effective_from": "2023-04-24",
+        "regulator": "IRDAI",
+        "source": "IRDAI",
+        "status": "active",
+        "source_url": "https://irdai.gov.in/document-detail?documentId=3145928",
+        "sections": [
+            {
+                "heading": "Section 1: Mandatory Appointment and Role of CISO",
+                "content": (
+                    "Every insurance and reinsurance company registered with IRDAI must appoint a dedicated Chief Information Security Officer (CISO). "
+                    "The CISO shall report directly to the Board Risk Management Committee (RMC) or Executive Director. An Information Security Committee "
+                    "(ISC) chaired by senior management must meet at least once every calendar quarter."
+                )
+            },
+            {
+                "heading": "Section 2: 6-Hour Incident Notification and Annual Security Audit",
+                "content": (
+                    "Insurers are mandated to notify IRDAI of any high-severity cyber incident, data exfiltration, or core insurance software compromise "
+                    "within 6 hours of identification. Insurers must undergo an annual comprehensive cyber security audit conducted by CERT-In empaneled "
+                    "external auditing agencies and submit the audit report to IRDAI within 90 days of fiscal year end."
+                )
+            }
+        ]
+    },
+    {
+        "filename": "IRDAI_Policyholder_Protection_Regulations_2024.pdf",
+        "title": "IRDAI (Protection of Policyholders' Interests and Allied Matters of Insurers) Regulations, 2024",
+        "notification_number": "F.No. IRDAI/Reg/3/198/2024",
+        "publication_date": "2024-03-22",
+        "effective_date": "2024-04-01",
+        "effective_from": "2024-04-01",
+        "regulator": "IRDAI",
+        "source": "IRDAI",
+        "status": "active",
+        "source_url": "https://irdai.gov.in/document-detail?documentId=4738291",
+        "sections": [
+            {
+                "heading": "Section 1: 30-Day Free Look Cancellation Period",
+                "content": (
+                    "Policyholders are entitled to an enhanced Free Look period of 30 days from the date of receipt of the policy document for all "
+                    "policies obtained electronically or through distance marketing channels (and 15 days for policies received physically). During "
+                    "this period, the policyholder may review the terms and return the policy with a full refund of premium minus proportionate risk "
+                    "cover and medical examination costs."
+                )
+            },
+            {
+                "heading": "Section 2: Claim Settlement Turnaround Time (30 Days) and Penal Interest",
+                "content": (
+                    "Insurers shall settle or reject any life, general, or health insurance claim within 30 days from the date of receipt of the last "
+                    "necessary document. In case of delay beyond 30 days, the insurer is legally liable to pay interest to the policyholder or nominee "
+                    "at Bank Rate plus 2% per annum from the due date of settlement until actual payment date."
+                )
+            }
+        ]
+    },
+    {
+        "filename": "RBI_Outdated_Housing_Loan_LTV_2015.pdf",
+        "title": "RBI Superseded Circular on Individual Housing Loans - LTV Ratios & Risk Weights (2015)",
+        "notification_number": "RBI/2015-16/208 DBR.BP.BC.No.44/08.12.015/2015-16",
+        "publication_date": "2015-10-08",
+        "effective_date": "2015-10-08",
+        "effective_from": "2015-10-08",
+        "effective_until": "2020-10-15",
+        "regulator": "RBI",
+        "source": "RBI",
+        "status": "superseded",
+        "source_url": "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=10065",
+        "sections": [
+            {
+                "heading": "Section 1: 2015 Housing Loan LTV Framework (Superseded)",
+                "content": (
+                    "Under the 2015 guidelines, for individual housing loans up to ₹30 Lakhs, the maximum LTV ratio was 80% (with 90% permitted only "
+                    "for loans up to ₹30 Lakhs with higher risk weights). For housing loans above ₹75 Lakhs, maximum LTV ratio was 75%.\n"
+                    "Status: This circular was fully superseded by RBI Master Circular DOR.No.BP.BC.24/08.12.001/2020-21 on October 16, 2020."
+                )
+            }
+        ]
+    },
+    {
+        "filename": "RBI_Old_NEFT_Timings_2018.pdf",
+        "title": "RBI Outdated Procedural Guidelines on NEFT Operating Hours (2018)",
+        "notification_number": "DPSS.CO.EPPD.No.444/04.03.01/2017-18",
+        "publication_date": "2018-01-01",
+        "effective_date": "2018-01-01",
+        "effective_from": "2018-01-01",
+        "effective_until": "2019-12-15",
+        "regulator": "RBI",
+        "source": "RBI",
+        "status": "superseded",
+        "source_url": "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=11190",
+        "sections": [
+            {
+                "heading": "Section 1: 2018 Batch Timing Restrictions (Superseded)",
+                "content": (
+                    "NEFT transactions are processed in 12 hourly settlement batches from 08:00 hours to 19:00 hours on working weekdays and "
+                    "08:00 hours to 13:00 hours on working Saturdays. No NEFT processing takes place on Sundays, 2nd & 4th Saturdays, or RTGS holidays.\n"
+                    "Status: This circular was superseded when RBI made NEFT available 24x7x365 starting December 16, 2019."
                 )
             }
         ]
@@ -599,14 +810,18 @@ def seed_and_ingest_all():
                 notification_number=doc_info["notification_number"],
                 publication_date=doc_info["publication_date"],
                 effective_date=doc_info["effective_date"],
-                source="RBI" if doc_info["source"] == "RBI" else "BANK_POLICY",
+                effective_from=doc_info.get("effective_from", doc_info.get("effective_date")),
+                effective_until=doc_info.get("effective_until"),
+                regulator=doc_info.get("regulator", "RBI" if doc_info.get("source") == "RBI" else ("INTERNAL" if "IDFC" in doc_info.get("source", "") else "RBI")),
+                source="BANK_POLICY" if "IDFC" in doc_info.get("source", "") or doc_info.get("source") == "BANK_POLICY" else doc_info.get("source", "RBI"),
+                status=doc_info.get("status", "active"),
                 source_url=doc_info["source_url"],
-                document_type="pdf",
+                document_type="scanned_pdf" if doc_info.get("is_ocr") else "pdf",
                 file_path=pdf_path,
                 page_count=extracted["page_count"],
-                is_ocr=False,
-                ocr_confidence=1.0,
-                ocr_ambiguity_notes=None,
+                is_ocr=doc_info.get("is_ocr", False),
+                ocr_confidence=0.84 if doc_info.get("is_ocr") else 1.0,
+                ocr_ambiguity_notes="Scanned document with character ambiguities" if doc_info.get("is_ocr") else None,
                 checksum=checksum,
                 processing_status="indexed"
             )
@@ -616,18 +831,33 @@ def seed_and_ingest_all():
 
             # Chunk & Add KnowledgeChunks
             chunks = document_chunker.chunk_document_pages(extracted["pages"])
-            for c in chunks:
+            for c_idx, c in enumerate(chunks):
+                # Calculate synthetic bounding box and offsets for visual passage viewer
+                bbox_data = {
+                    "page": c["page_number"],
+                    "x": 54.0,
+                    "y": 100.0 + (c_idx % 4) * 140.0,
+                    "width": 504.0,
+                    "height": 120.0
+                }
+                offsets_data = {
+                    "start_char": 0,
+                    "end_char": len(c["chunk_text"])
+                }
+
                 chunk_record = KnowledgeChunk(
                     document_id=doc_record.id,
                     page_number=c["page_number"],
                     chunk_index=c["chunk_index"],
                     section=c.get("section", "General"),
-                    chunk_text=c["chunk_text"]
+                    chunk_text=c["chunk_text"],
+                    bounding_box_json=json.dumps(bbox_data),
+                    source_offsets_json=json.dumps(offsets_data)
                 )
                 db.add(chunk_record)
 
             db.commit()
-            print(f"[OK] Ingested: [{doc_info['source']}] {doc_info['title']} ({len(chunks)} chunks, PDF: {doc_info['filename']})")
+            print(f"[OK] Ingested: [{doc_record.regulator}] {doc_info['title']} ({len(chunks)} chunks, PDF: {doc_info['filename']})")
 
         # 3. Rebuild Hybrid Vector Store
         all_chunks = db.query(KnowledgeChunk).all()
@@ -635,15 +865,34 @@ def seed_and_ingest_all():
         for c in all_chunks:
             doc = c.document
             if doc:
+                bbox = {}
+                if c.bounding_box_json:
+                    try:
+                        bbox = json.loads(c.bounding_box_json)
+                    except Exception:
+                        pass
+                offsets = {}
+                if c.source_offsets_json:
+                    try:
+                        offsets = json.loads(c.source_offsets_json)
+                    except Exception:
+                        pass
+
                 records.append({
                     "id": c.id,
                     "document_id": c.document_id,
                     "doc_title": doc.title,
                     "notification_number": doc.notification_number,
                     "source": doc.source,
+                    "regulator": doc.regulator,
+                    "status": doc.status,
+                    "effective_from": doc.effective_from,
+                    "effective_until": doc.effective_until,
                     "page_number": c.page_number,
                     "section": c.section,
                     "chunk_text": c.chunk_text,
+                    "bounding_box": bbox,
+                    "source_offsets": offsets,
                     "publication_date": doc.publication_date
                 })
         hybrid_vector_store.build_index(records)

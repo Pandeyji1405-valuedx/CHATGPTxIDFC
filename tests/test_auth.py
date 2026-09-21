@@ -55,3 +55,14 @@ def test_get_current_user_profile(client, auth_headers_user1):
     assert "id" in data
     assert "email" in data
     assert data["name"] == "User Alpha"
+
+def test_switch_account_session(client):
+    # Switch using registered email prefix
+    switch_res = client.post("/api/auth/switch-account", json={
+        "email": "customer@idfcbank.com"
+    })
+    assert switch_res.status_code == 200
+    data = switch_res.json()
+    assert "access_token" in data
+    assert "customer" in data["user"]["email"]
+

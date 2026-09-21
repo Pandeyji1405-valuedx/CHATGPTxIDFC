@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChatGPT — IDFC FIRST Banking Intelligence</title>
-  <meta name="description" content="Production-Quality Banking Conversational AI with Two-Layer RAG, Strict Grounding, and Real-Life ChatGPT Experience.">
+  <title>ChatGPT — IDFC FIRST Governed Regulatory Knowledge Assistant</title>
+  <meta name="description" content="Production-Quality Multi-Regulator Banking & Financial Intelligence with Two-Layer RAG, Strict Grounding, and Real-Life ChatGPT Experience.">
   
   <!-- Fonts: Inter (OpenAI Söhne alternative) & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,7 +65,7 @@
       <div class="sidebar-shortcuts">
         <button id="btn-explore-kb" class="sidebar-nav-item">
           <div class="nav-item-icon"><i class="fa-solid fa-book-bookmark"></i></div>
-          <span>RBI & Bank Directives</span>
+          <span>Multi-Regulator Directives</span>
         </button>
       </div>
 
@@ -81,7 +81,7 @@
         <div id="admin-kb-btn-container" class="admin-only-action hidden">
           <button id="btn-open-admin-kb" class="sidebar-nav-item admin-highlight">
             <div class="nav-item-icon"><i class="fa-solid fa-shield-halved"></i></div>
-            <span>Admin Knowledge Base</span>
+            <span>Admin Knowledge Base & MIS</span>
           </button>
         </div>
 
@@ -92,7 +92,7 @@
           </div>
           <div class="user-info">
             <span id="user-display-name" class="user-display-name">Customer User</span>
-            <span class="user-plan-tag">IDFC Banking Plus</span>
+            <span class="user-plan-tag">IDFC Regulatory Plus</span>
           </div>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="profile-dots">
             <circle cx="12" cy="12" r="1"/>
@@ -141,8 +141,8 @@
                   </svg>
                 </div>
                 <div class="model-opt-details">
-                  <strong>ChatGPT 4o — IDFC Banking RAG</strong>
-                  <span>Two-Layer RAG with verified RBI Master Directions & policies</span>
+                  <strong>ChatGPT 4o — Governed Compliance Assistant</strong>
+                  <span>Grounded in official RBI, SEBI, IRDAI & Bank Policies</span>
                 </div>
                 <i class="fa-solid fa-check check-icon"></i>
               </div>
@@ -204,14 +204,15 @@
             </div>
           </div>
 
-          <h2 class="hero-prompt-heading">What can I help with today?</h2>
+          <h2 class="hero-prompt-heading">Governed Regulatory Intelligence</h2>
+          <p class="hero-prompt-sub" style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px;">Instant, grounded answers across RBI, SEBI, IRDAI and IDFC Bank policies.</p>
 
           <!-- Suggestion Category Filter Tabs -->
           <div class="prompt-category-tabs">
             <button class="cat-tab active" data-cat="all">⚡ Popular Queries</button>
             <button class="cat-tab" data-cat="rbi">📜 RBI Directives</button>
-            <button class="cat-tab" data-cat="payments">💳 NEFT & Payments</button>
-            <button class="cat-tab" data-cat="lending">🏠 Lending & KYC</button>
+            <button class="cat-tab" data-cat="sebi">📈 SEBI LODR</button>
+            <button class="cat-tab" data-cat="irdai">🛡️ IRDAI Cyber</button>
           </div>
           
           <!-- Suggestion Cards Grid (ChatGPT pill cards) -->
@@ -229,10 +230,10 @@
               </div>
             </div>
 
-            <div class="prompt-card" data-prompt="What is NEFT and what are its operating hours and transaction limits?">
+            <div class="prompt-card" data-prompt="What are the disclosure timelines for material events under SEBI LODR Regulation 30?">
               <div class="card-text">
-                <div class="card-title">NEFT 24x7 Settlement</div>
-                <div class="card-sub">Operating hours, 48 batches, and limit rules</div>
+                <div class="card-title">SEBI LODR Disclosures</div>
+                <div class="card-sub">30 mins / 12 hrs / 24 hrs disclosure mandates</div>
               </div>
               <div class="card-arrow-icon">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -253,10 +254,10 @@
               </div>
             </div>
 
-            <div class="prompt-card" data-prompt="What are the Loan-to-Value (LTV) ratio caps for housing loans under RBI regulations?">
+            <div class="prompt-card" data-prompt="What are the IRDAI cyber incident reporting timelines and data localization rules?">
               <div class="card-text">
-                <div class="card-title">Housing Loan LTV Caps</div>
-                <div class="card-sub">Max 90% up to ₹30L, 80% up to ₹75L limits</div>
+                <div class="card-title">IRDAI Cyber Security</div>
+                <div class="card-sub">6-hour reporting mandate and India data localization</div>
               </div>
               <div class="card-arrow-icon">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -288,13 +289,49 @@
 
       <!-- FLOATING CHAT INPUT COMPOSER (EXACT CHATGPT PILL) -->
       <div class="chat-input-container">
+
+        <!-- SCOPED QUERY FILTER BAR (PRD Section 5.1 & FR-06) -->
+        <div class="query-scope-filter-bar">
+          <div class="scope-group">
+            <span class="scope-label"><i class="fa-solid fa-scale-balanced"></i> Regulator:</span>
+            <div class="scope-chips" id="regulator-chips">
+              <button type="button" class="scope-chip active" data-reg="ALL">All</button>
+              <button type="button" class="scope-chip" data-reg="RBI">RBI</button>
+              <button type="button" class="scope-chip" data-reg="SEBI">SEBI</button>
+              <button type="button" class="scope-chip" data-reg="IRDAI">IRDAI</button>
+              <button type="button" class="scope-chip" data-reg="INTERNAL">Bank Policy</button>
+            </div>
+          </div>
+
+          <div class="scope-group">
+            <span class="scope-label"><i class="fa-solid fa-calendar-days"></i> Timeline:</span>
+            <select id="as-of-date-select" class="scope-select">
+              <option value="">Latest Active Rules</option>
+              <option value="2024-04-01">As of April 2024</option>
+              <option value="2023-05-04">As of May 2023</option>
+              <option value="2022-11-30">As of Nov 2022</option>
+              <option value="2021-12-31">Historical (2021 Rules)</option>
+              <option value="2016-01-01">Historical (2016 Rules)</option>
+            </select>
+          </div>
+
+          <div class="scope-group">
+            <span class="scope-label"><i class="fa-solid fa-layer-group"></i> Depth:</span>
+            <select id="requested-depth-select" class="scope-select">
+              <option value="concise">Concise Points</option>
+              <option value="detailed">Comprehensive</option>
+              <option value="comparison">Comparison Table</option>
+            </select>
+          </div>
+        </div>
+
         <form id="chat-form" class="chatgpt-input-box">
           
           <!-- Textarea wrapper -->
           <div class="input-content-row">
             <textarea 
               id="chat-textarea" 
-              placeholder="Message ChatGPT..." 
+              placeholder="Ask about RBI, SEBI, IRDAI directives or bank policies..." 
               rows="1"
               autocomplete="off"
             ></textarea>
@@ -335,7 +372,7 @@
         </form>
 
         <div class="chat-footer-disclaimer">
-          ChatGPT can make mistakes. Verify important financial and regulatory info.
+          Governed Regulatory Intelligence. Zero-Internet Policy enforced against authorized master circulars.
         </div>
       </div>
 
@@ -343,7 +380,7 @@
 
   </div>
 
-  <!-- AUTHENTICATION MODAL (EXACT CHATGPT AUTH PAGE AESTHETIC) -->
+  <!-- AUTHENTICATION MODAL -->
   <div id="auth-modal" class="modal-overlay hidden">
     <div class="modal-card chatgpt-modal auth-dialog">
       <button class="modal-close-btn" data-close="auth-modal">
@@ -359,16 +396,19 @@
           </svg>
         </div>
         <h3 id="auth-modal-title">Welcome back</h3>
-        <p class="modal-subtitle">Log in to ChatGPT IDFC Banking Assistant</p>
+        <p class="modal-subtitle">Log in to IDFC Regulatory Compliance Assistant</p>
       </div>
 
-      <!-- Quick Demo Login Presets (Fast 1-Click Access) -->
+      <!-- Quick Demo Login Presets -->
       <div class="demo-auth-presets">
         <button id="btn-quick-customer" class="btn-demo-pill" title="1-Click Login as Customer">
-          <i class="fa-solid fa-user"></i> Quick Customer Login
+          <i class="fa-solid fa-user"></i> Customer
         </button>
         <button id="btn-quick-admin" class="btn-demo-pill" title="1-Click Login as Admin">
-          <i class="fa-solid fa-shield-halved"></i> Quick Admin Login
+          <i class="fa-solid fa-shield-halved"></i> Admin
+        </button>
+        <button id="btn-quick-devesh" class="btn-demo-pill" title="1-Click Login as Devesh Pandey">
+          <i class="fa-solid fa-id-badge"></i> Devesh
         </button>
       </div>
 
@@ -441,7 +481,84 @@
     </div>
   </div>
 
-  <!-- ADMIN KNOWLEDGE BASE MANAGEMENT MODAL -->
+  <!-- VISUAL DOCUMENT PASSAGE VIEWER MODAL (PRD Section 5.3 & FR-08, FR-09) -->
+  <div id="passage-viewer-modal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-large chatgpt-modal">
+      <button class="modal-close-btn" data-close="passage-viewer-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      
+      <div class="modal-header">
+        <div class="chatgpt-logo-modal">
+          <i class="fa-solid fa-file-pdf" style="font-size: 22px;"></i>
+        </div>
+        <h3 id="pv-doc-title">Document Source Passage</h3>
+        <p class="modal-subtitle" id="pv-doc-meta">Authority: RBI · Notification: ... · Page 1</p>
+      </div>
+
+      <div class="passage-viewer-content">
+        <div class="passage-badge-row">
+          <span class="badge-active" id="pv-status-badge">ACTIVE REGULATION</span>
+          <span class="badge-secondary" id="pv-regulator-badge">RBI</span>
+          <span class="badge-secondary" id="pv-page-badge">Page 1</span>
+          <span class="badge-secondary" id="pv-section-badge">Section 1</span>
+        </div>
+        
+        <div class="passage-highlight-box" id="pv-highlight-container">
+          <!-- Rendered passage with highlighted visual bounding container -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8-CATEGORY REGULATORY FEEDBACK MODAL (PRD Section 5.4 & FR-12) -->
+  <div id="feedback-triage-modal" class="modal-overlay hidden">
+    <div class="modal-card chatgpt-modal auth-dialog">
+      <button class="modal-close-btn" data-close="feedback-triage-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      
+      <div class="modal-header">
+        <div class="chatgpt-logo-modal" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;">
+          <i class="fa-solid fa-shield-cat" style="font-size: 20px;"></i>
+        </div>
+        <h3>Quality Review & Triage</h3>
+        <p class="modal-subtitle">Classify why this response did not meet regulatory standards</p>
+      </div>
+
+      <form id="feedback-triage-form">
+        <input type="hidden" id="feedback-target-msg-id">
+        <div class="form-group">
+          <label>Feedback Category</label>
+          <select id="feedback-category-select" class="scope-select" style="width: 100%; padding: 10px; border-radius: 8px;" required>
+            <option value="INCORRECT_FACT">Incorrect Fact / Numeric Threshold</option>
+            <option value="INCOMPLETE">Incomplete / Missing Key Requirements</option>
+            <option value="WRONG_SOURCE">Wrong Source or Circular Cited</option>
+            <option value="SUPERSEDED_OUTDATED">Outdated / Superseded Regulation</option>
+            <option value="TOO_LONG">Too Long / Overly Verbose</option>
+            <option value="TOO_SHORT">Too Short / Lacks Necessary Depth</option>
+            <option value="WRONG_REGULATOR">Wrong Regulator Scope (e.g. SEBI vs RBI)</option>
+            <option value="UNCLEAR">Unclear / Bad Markdown Formatting</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-top: 14px;">
+          <label>Additional Context / Correction (Optional)</label>
+          <textarea id="feedback-comment-input" rows="3" placeholder="Provide details to assist compliance quality review..." style="width: 100%; padding: 10px; border-radius: 8px;"></textarea>
+        </div>
+
+        <div class="form-actions" style="margin-top: 18px; display: flex; gap: 8px;">
+          <button type="submit" class="btn btn-chatgpt-primary btn-block">Submit Feedback for Review</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADMIN KNOWLEDGE BASE & MIS MANAGEMENT MODAL (PRD Section 7.3 & 14) -->
   <div id="admin-kb-modal" class="modal-overlay hidden">
     <div class="modal-card modal-card-large chatgpt-modal">
       <button class="modal-close-btn" data-close="admin-kb-modal">
@@ -454,81 +571,120 @@
         <div class="chatgpt-logo-modal">
           <i class="fa-solid fa-shield-halved" style="font-size: 22px;"></i>
         </div>
-        <h3>Knowledge Base Administration</h3>
-        <p class="modal-subtitle">Upload, inspect OCR, and manage verified RBI Master Directions & Policies</p>
+        <h3>Knowledge Base Administration & MIS</h3>
+        <p class="modal-subtitle">Manage multi-regulator directives, inspect Ingestion MIS, and track consumption</p>
       </div>
 
-      <!-- Upload Dropzone -->
-      <div class="upload-dropzone" id="upload-dropzone">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropzone-icon">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" x2="12" y1="3" y2="15"/>
-        </svg>
-        <h4>Upload Banking Documents or Scanned Circulars</h4>
-        <p>Supports PDF, Scanned PDF, DOCX, TXT, CSV, PNG, JPG (Max 25MB)</p>
-        <input type="file" id="kb-file-input" class="file-input-hidden" accept=".pdf,.txt,.docx,.csv,.png,.jpg,.jpeg,.md">
-        <button type="button" id="btn-browse-file" class="btn btn-chatgpt-ghost btn-sm">Select File</button>
+      <!-- Admin Tab Switcher -->
+      <div class="admin-tab-bar">
+        <button class="admin-tab-btn active" data-tab="catalogue"><i class="fa-solid fa-folder-open"></i> Documents Catalogue</button>
+        <button class="admin-tab-btn" data-tab="upload"><i class="fa-solid fa-cloud-arrow-up"></i> Upload & Ingest</button>
+        <button class="admin-tab-btn" data-tab="mis-ingestion"><i class="fa-solid fa-chart-pie"></i> Ingestion MIS</button>
+        <button class="admin-tab-btn" data-tab="mis-consumption"><i class="fa-solid fa-gauge-high"></i> Consumption & Telemetry</button>
       </div>
 
-      <!-- Upload Metadata Form -->
-      <form id="kb-upload-form" class="kb-upload-form hidden">
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Document Title</label>
-            <input type="text" id="doc-title-input" placeholder="e.g. RBI Master Direction on Digital Lending">
-          </div>
-          <div class="form-group flex-1">
-            <label>Notification / Circular Number</label>
-            <input type="text" id="doc-notif-input" placeholder="e.g. DOR.CRE.REC.65/21.07.001/2022-23">
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label>Source Authority</label>
-            <select id="doc-source-select">
-              <option value="RBI">Reserve Bank of India (RBI)</option>
-              <option value="BANK_POLICY">IDFC FIRST Bank Policy</option>
-              <option value="INTERNAL_POLICY">Internal Banking Guidelines</option>
+      <!-- TAB 1: Documents Catalogue -->
+      <div id="tab-content-catalogue" class="admin-tab-content">
+        <div class="table-header-bar">
+          <h4>Indexed Regulatory Documents (<span id="kb-doc-count">0</span>)</h4>
+          <div style="display: flex; gap: 8px;">
+            <select id="admin-filter-regulator" class="scope-select">
+              <option value="ALL">All Regulators</option>
+              <option value="RBI">RBI</option>
+              <option value="SEBI">SEBI</option>
+              <option value="IRDAI">IRDAI</option>
+              <option value="INTERNAL">Internal Bank Policies</option>
             </select>
-          </div>
-          <div class="form-group flex-1">
-            <label>Publication Date</label>
-            <input type="date" id="doc-pubdate-input">
+            <button id="btn-reindex-all" class="btn btn-chatgpt-ghost btn-sm" title="Rebuild Vector & Hybrid Index">
+              <i class="fa-solid fa-arrows-rotate"></i> Re-index All
+            </button>
           </div>
         </div>
-        <div class="form-actions" style="display: flex; gap: 8px; margin-top: 12px;">
-          <button type="submit" id="btn-submit-upload" class="btn btn-chatgpt-primary">Ingest Document</button>
-          <button type="button" id="btn-cancel-upload" class="btn btn-chatgpt-ghost">Cancel</button>
+
+        <div class="kb-table-container">
+          <table class="kb-table">
+            <thead>
+              <tr>
+                <th>Title & Regulator</th>
+                <th>Notification ID</th>
+                <th>Status</th>
+                <th>Effective Dates</th>
+                <th>Chunks</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="kb-documents-tbody">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
         </div>
-      </form>
-
-      <!-- Ingested Documents Table -->
-      <div class="table-header-bar">
-        <h4>Indexed Regulatory Documents (<span id="kb-doc-count">0</span>)</h4>
-        <button id="btn-reindex-all" class="btn btn-chatgpt-ghost btn-sm" title="Rebuild Vector & Hybrid Index">
-          <i class="fa-solid fa-arrows-rotate"></i> Re-index All
-        </button>
       </div>
 
-      <div class="kb-table-container">
-        <table class="kb-table">
-          <thead>
-            <tr>
-              <th>Title & Authority</th>
-              <th>Notification ID</th>
-              <th>Type</th>
-              <th>Pages</th>
-              <th>Chunks</th>
-              <th>OCR & Ambiguity</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="kb-documents-tbody">
-            <!-- Injected via JavaScript -->
-          </tbody>
-        </table>
+      <!-- TAB 2: Upload Dropzone & Metadata Form -->
+      <div id="tab-content-upload" class="admin-tab-content hidden">
+        <div class="upload-dropzone" id="upload-dropzone">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="dropzone-icon">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" x2="12" y1="3" y2="15"/>
+          </svg>
+          <h4>Upload Regulatory Directives or Scanned Circulars</h4>
+          <p>Supports PDF, Scanned PDF, DOCX, TXT, CSV, PNG, JPG (Max 25MB)</p>
+          <input type="file" id="kb-file-input" class="file-input-hidden" accept=".pdf,.txt,.docx,.csv,.png,.jpg,.jpeg,.md">
+          <button type="button" id="btn-browse-file" class="btn btn-chatgpt-ghost btn-sm">Select File</button>
+        </div>
+
+        <!-- Upload Metadata Form -->
+        <form id="kb-upload-form" class="kb-upload-form hidden">
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Document Title</label>
+              <input type="text" id="doc-title-input" placeholder="e.g. SEBI LODR Disclosure Amendments 2024">
+            </div>
+            <div class="form-group flex-1">
+              <label>Notification / Circular Number</label>
+              <input type="text" id="doc-notif-input" placeholder="e.g. SEBI/LAD-NRO/GN/2024/182">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Source Authority / Regulator</label>
+              <select id="doc-source-select" class="scope-select" style="width: 100%;">
+                <option value="RBI">Reserve Bank of India (RBI)</option>
+                <option value="SEBI">Securities and Exchange Board of India (SEBI)</option>
+                <option value="IRDAI">Insurance Regulatory & Development Authority (IRDAI)</option>
+                <option value="INTERNAL">IDFC FIRST Bank Internal Policy</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label>Effective Date</label>
+              <input type="date" id="doc-pubdate-input">
+            </div>
+          </div>
+          <div class="form-actions" style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="submit" id="btn-submit-upload" class="btn btn-chatgpt-primary">Ingest Document</button>
+            <button type="button" id="btn-cancel-upload" class="btn btn-chatgpt-ghost">Cancel</button>
+          </div>
+        </form>
       </div>
+
+      <!-- TAB 3: Ingestion MIS Dashboard -->
+      <div id="tab-content-mis-ingestion" class="admin-tab-content hidden">
+        <div class="mis-metrics-grid" id="mis-metrics-summary">
+          <!-- Injected via JS: Cards for Total, Active, Superseded, Failed, Chunks -->
+        </div>
+        <div class="mis-regulator-breakdown" id="mis-regulator-summary" style="margin-top: 20px;">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <!-- TAB 4: Consumption & Telemetry MIS -->
+      <div id="tab-content-mis-consumption" class="admin-tab-content hidden">
+        <div class="mis-metrics-grid" id="mis-consumption-summary">
+          <!-- Injected via JS: Cards for Queries, Tokens In/Out, Avoided Calls % -->
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -572,7 +728,7 @@
         <div class="setting-item">
           <div>
             <strong>Strict Airgap Zero-Internet Policy</strong>
-            <p>100% ground truth from approved RBI & IDFC directives</p>
+            <p>100% ground truth from approved RBI, SEBI, IRDAI & IDFC directives</p>
           </div>
           <span class="badge-active" style="padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Active</span>
         </div>

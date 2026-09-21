@@ -274,9 +274,12 @@ html, body {
 .conversation-list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 10px;
+  padding: 8px 10px;
   scrollbar-width: thin;
   scrollbar-color: var(--border-subtle) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .conversation-list::-webkit-scrollbar {
@@ -288,38 +291,48 @@ html, body {
   border-radius: 4px;
 }
 
-.conversation-group-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  padding: 12px 8px 6px 8px;
-  letter-spacing: 0.2px;
+.conv-group, .conversation-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.conversation-item {
+.conv-group-title, .conversation-group-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 8px 10px 4px 10px;
+  letter-spacing: 0.4px;
+}
+
+.conv-item, .conversation-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
-  margin-bottom: 2px;
+  transition: all 0.15s ease;
   user-select: none;
   position: relative;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
 }
 
-.conversation-item:hover {
+.conv-item:hover, .conversation-item:hover {
   background-color: var(--item-hover);
   color: var(--text-primary);
 }
 
-.conversation-item.active {
+.conv-item.active, .conversation-item.active {
   background-color: var(--sidebar-active);
   color: var(--text-primary);
   font-weight: 500;
+  border-color: var(--border-subtle);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .conv-title-text {
@@ -328,14 +341,16 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-right: 6px;
+  font-size: 13px;
 }
 
 .conv-item-actions {
   display: none;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
 }
 
+.conv-item:hover .conv-item-actions,
 .conversation-item:hover .conv-item-actions {
   display: flex;
 }
@@ -345,10 +360,13 @@ html, body {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
+  padding: 4px 6px;
   border-radius: var(--radius-sm);
   font-size: 11px;
   transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .conv-action-btn:hover {
@@ -600,7 +618,7 @@ html, body {
 .messages-stream {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 16px 160px 16px;
+  padding: 10px 16px 210px 16px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -1039,6 +1057,100 @@ html, body {
   flex-direction: column;
   align-items: center;
   z-index: 30;
+  gap: 8px;
+}
+
+/* Scoped Query Filter Bar */
+.query-scope-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 768px;
+  padding: 6px 14px;
+  background: rgba(33, 33, 33, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  flex-wrap: wrap;
+  transition: all 0.2s ease;
+}
+
+body.light-theme .query-scope-filter-bar {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.scope-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scope-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.scope-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scope-chip {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scope-chip:hover {
+  background-color: var(--item-hover);
+  color: var(--text-primary);
+}
+
+.scope-chip.active {
+  background-color: var(--badge-green-bg);
+  border-color: rgba(16, 163, 127, 0.4);
+  color: var(--badge-green);
+  font-weight: 600;
+}
+
+.scope-select {
+  background-color: var(--composer-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.scope-select:focus {
+  border-color: var(--border-focus);
+}
+
+.scope-select option {
+  background-color: var(--main-surface);
+  color: var(--text-primary);
 }
 
 .chatgpt-input-box {
@@ -1214,48 +1326,55 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: var(--modal-overlay);
-  backdrop-filter: blur(6px);
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.15s ease;
+  padding: 16px;
+}
+
+body.light-theme .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.45);
 }
 
 .modal-card.chatgpt-modal {
   background-color: var(--modal-bg);
   border: 1px solid var(--modal-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-popup);
   width: 100%;
-  max-width: 440px;
-  padding: 28px;
+  max-width: 420px;
+  padding: 32px 28px;
   position: relative;
-  animation: slideUp 0.2s ease;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 .modal-card-large.chatgpt-modal {
-  max-width: 840px;
+  max-width: 860px;
   max-height: 88vh;
   overflow-y: auto;
 }
 
 .modal-close-btn {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 18px;
+  right: 18px;
   background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
 }
 
 .modal-close-btn:hover {
@@ -1265,62 +1384,85 @@ html, body {
 
 .modal-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .chatgpt-logo-modal {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: var(--radius-full);
   background-color: var(--composer-surface);
   border: 1px solid var(--border-medium);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px auto;
+  margin: 0 auto 14px auto;
   color: var(--text-primary);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
 
 .modal-header h3 {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .modal-subtitle {
   font-size: 13px;
   color: var(--text-muted);
+  line-height: 1.4;
 }
 
 /* Quick Demo Login Presets */
 .demo-auth-presets {
   display: flex;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .btn-demo-pill {
   flex: 1;
   background-color: var(--composer-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
 }
 
 .btn-demo-pill:hover {
   background-color: var(--item-hover);
   color: var(--text-primary);
   border-color: var(--border-medium);
+  transform: translateY(-1px);
+}
+
+#btn-quick-customer:hover {
+  border-color: rgba(16, 163, 127, 0.5);
+  color: var(--badge-green);
+}
+
+#btn-quick-admin:hover {
+  border-color: rgba(151, 20, 77, 0.6);
+  color: #e11d48;
+}
+
+#btn-quick-devesh:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #3b82f6;
+}
+
+.oauth-section {
+  width: 100%;
 }
 
 .btn-oauth {
@@ -1328,29 +1470,33 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 10px;
-  background-color: var(--main-surface);
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: var(--composer-surface);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   color: var(--text-primary);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: all 0.2s ease;
 }
 
 .btn-oauth:hover {
   background-color: var(--item-hover);
+  border-color: var(--border-focus);
+  transform: translateY(-1px);
 }
 
 .auth-divider {
   display: flex;
   align-items: center;
   text-align: center;
-  margin: 16px 0;
+  margin: 18px 0;
   color: var(--text-muted);
   font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .auth-divider::before, .auth-divider::after {
@@ -1360,42 +1506,47 @@ html, body {
 }
 
 .auth-divider span {
-  padding: 0 10px;
+  padding: 0 12px;
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  text-align: left;
 }
 
 .form-group label {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
 .form-group input, 
 .form-group select {
-  padding: 9px 12px;
+  height: 44px;
+  padding: 10px 14px;
   background-color: var(--composer-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   color: var(--text-primary);
-  font-size: 13.5px;
+  font-size: 14px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.15s ease;
+  font-family: var(--font-sans);
 }
 
 .form-group input:focus,
 .form-group select:focus {
-  border-color: var(--border-medium);
+  border-color: #10a37f;
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.15);
+  background-color: var(--main-surface);
 }
 
 .form-row {
@@ -1408,18 +1559,22 @@ html, body {
 }
 
 .btn {
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
-  font-size: 13.5px;
-  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btn-sm {
-  padding: 5px 10px;
-  font-size: 12px;
+  padding: 6px 12px;
+  font-size: 12.5px;
 }
 
 .btn-block {
@@ -1427,13 +1582,16 @@ html, body {
 }
 
 .btn-chatgpt-primary {
-  background-color: var(--text-primary);
-  color: var(--main-surface);
+  height: 44px;
+  background-color: var(--send-btn-bg);
+  color: var(--send-btn-color);
   font-weight: 600;
+  font-size: 14.5px;
 }
 
 .btn-chatgpt-primary:hover {
   opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .btn-chatgpt-ghost {
@@ -1444,20 +1602,21 @@ html, body {
 
 .btn-chatgpt-ghost:hover {
   background-color: var(--item-hover);
+  border-color: var(--border-focus);
 }
 
 .btn-danger-chatgpt {
-  background-color: var(--badge-red-bg);
-  color: var(--badge-red);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
 .btn-danger-chatgpt:hover {
-  background-color: rgba(239, 68, 68, 0.25);
+  background-color: rgba(239, 68, 68, 0.2);
 }
 
 .auth-toggle-footer {
-  margin-top: 16px;
+  margin-top: 20px;
   text-align: center;
   font-size: 13px;
   color: var(--text-muted);
@@ -1470,43 +1629,116 @@ html, body {
   font-weight: 600;
   cursor: pointer;
   margin-left: 4px;
+  font-size: 13px;
 }
 
 .link-btn:hover {
   text-decoration: underline;
 }
 
-/* Multi-Account Drawer Cards */
+/* Multi-Account Switcher Drawer */
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.drawer-header h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 .saved-accounts-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 14px;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
-.account-item-card {
+.account-item, .account-item-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background-color: var(--composer-surface);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
 }
 
-.account-item-card:hover {
+.account-item:hover, .account-item-card:hover {
+  background-color: var(--item-hover);
   border-color: var(--border-medium);
+  transform: translateY(-1px);
 }
 
-.account-item-card.active {
-  border-color: var(--brand-accent);
+.account-item.active-account, .account-item-card.active {
+  border-color: rgba(16, 163, 127, 0.5);
+  background: rgba(16, 163, 127, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.account-card-left {
+.account-item-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #10a37f, #0d755b);
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.account-item-info {
+  flex: 1;
+  overflow: hidden;
+  text-align: left;
+}
+
+.account-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-item-email {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.role-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: rgba(151, 20, 77, 0.2);
+  color: #e11d48;
+  border: 1px solid rgba(225, 29, 72, 0.3);
+}
+
+.check-current {
+  color: #10a37f;
+  font-size: 15px;
+  margin-left: 8px;
 }
 
 .badge-active {
@@ -1687,4 +1919,181 @@ html, body {
   .prompt-grid {
     grid-template-columns: 1fr;
   }
+  .query-scope-filter-bar {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
+
+/* ==================== SCOPED QUERY FILTER BAR ==================== */
+.query-scope-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 780px;
+  margin: 0 auto 8px auto;
+  padding: 6px 14px;
+  background-color: var(--composer-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  font-size: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+  transition: border-color var(--transition-fast);
+}
+
+.scope-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scope-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scope-chips {
+  display: flex;
+  gap: 4px;
+}
+
+.scope-chip {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: 9999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.scope-chip:hover {
+  background: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.scope-chip.active {
+  background: var(--idfc-burgundy);
+  border-color: var(--idfc-burgundy-light);
+  color: #ffffff;
+}
+
+.scope-select {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11.5px;
+  outline: none;
+  cursor: pointer;
+}
+
+.scope-select:focus {
+  border-color: var(--idfc-burgundy-light);
+}
+
+/* ==================== VISUAL PASSAGE VIEWER ==================== */
+.passage-viewer-content {
+  margin-top: 14px;
+}
+
+.passage-badge-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.passage-highlight-box {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-medium);
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.passage-highlight-box mark,
+.passage-highlight-text {
+  background: rgba(245, 158, 11, 0.28);
+  color: #fbbf24;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* ==================== ADMIN MIS TABS & METRICS ==================== */
+.admin-tab-bar {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+}
+
+.admin-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.admin-tab-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.admin-tab-btn.active {
+  background: var(--idfc-burgundy);
+  color: #ffffff;
+}
+
+.mis-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.mis-card {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  text-align: center;
+}
+
+.mis-card-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.mis-card-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+

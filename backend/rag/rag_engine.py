@@ -1,4 +1,5 @@
 import re
+import uuid
 from typing import List, Dict, Any, Tuple, Optional
 from sqlalchemy.orm import Session
 from backend.config import settings
@@ -239,7 +240,12 @@ class TwoLayerRAGEngine:
             source_org = primary_chunk.get("source", "RBI")
 
             # Aggregate top matching chunks from the primary matching document or highly ranked chunks
-            matching_chunks = [c for c in kb_chunks if c.get("document_id") == doc_id or c.get("score", 0) >= primary_chunk.get("score", 0) * 0.80]
+            explicit_doc_chunks = [c for c in kb_chunks if c.get("doc_title") and any(w.lower() in query.lower() for w in c.get("doc_title", "").split() if len(w) > 4)]
+            if explicit_doc_chunks:
+                matching_chunks = explicit_doc_chunks[:3]
+            else:
+                matching_chunks = [c for c in kb_chunks if c.get("document_id") == doc_id or c.get("score", 0) >= primary_chunk.get("score", 0) * 0.90]
+
             seen_texts = set()
             chunk_text_parts = []
             for c in matching_chunks:
@@ -251,20 +257,6 @@ class TwoLayerRAGEngine:
 
             if not self.validate_answerability(query, chunk_text):
                 return FALLBACK_REFUSAL_MESSAGE
-
-            # 0. Gemini Flash Grounded Synthesis
-            if settings.USE_GEMINI_SYNTHESIS:
-                try:
-                    from backend.rag.gemini_service import gemini_service
-                    gemini_ans = gemini_service.synthesize_grounded_response(
-                        query=query,
-                        retrieved_chunks=matching_chunks,
-                        conversation_history=history_msgs
-                    )
-                    if gemini_ans and len(gemini_ans.strip()) > 20:
-                        return gemini_ans
-                except Exception as e:
-                    logger.warning(f"Gemini grounded synthesis fallback: {e}")
 
             target_entity = resolved_entities[0] if resolved_entities else ""
 
@@ -299,42 +291,8 @@ class TwoLayerRAGEngine:
                         f"{' '.join(date_sentences[:2])}"
                     )
 
-            # 3. Numerical Limits & Thresholds Intent
-            if query_intent == "NUMERICAL_LIMITS":
-                sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
-                limit_sentences = [s.strip() for s in sentences if re.search(r"(₹|\b\d+%\b|\blimit\b|\bminimum\b|\bmaximum\b|\bcap\b|\bratio\b|\blakhs?\b|\bcrores?\b)", s, re.IGNORECASE)]
-                if limit_sentences:
-                    body = "\n\n".join(limit_sentences)
-                    return (
-                        f"According to the approved {source_org} document **{doc_title}**{notif_prefix}, the applicable limits are:\n\n"
-                        f"{body}"
-                    )
-
-            # 4. Charges & Penalties Intent
-            if query_intent == "CHARGES_PENALTIES":
-                sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
-                charge_sentences = [s.strip() for s in sentences if re.search(r"\b(charge|charges|fee|fees|penalty|penalties|penal interest|waived|prohibited from levying|rate plus)\b", s, re.IGNORECASE)]
-                if charge_sentences:
-                    body = "\n\n".join(charge_sentences)
-                    return (
-                        f"According to the approved {source_org} document **{doc_title}**{notif_prefix}, the rules regarding charges and penalties are:\n\n"
-                        f"{body}"
-                    )
-
-            # 5. Operating Hours & Settlement Timelines Intent
-            if query_intent == "OPERATING_HOURS_TIMELINES":
-                sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
-                hour_sentences = [s.strip() for s in sentences if re.search(r"\b(24x7|operating hours|round-the-clock|batches|settlement|hours|working days|within \d+)\b", s, re.IGNORECASE)]
-                if hour_sentences:
-                    body = "\n\n".join(hour_sentences)
-                    return (
-                        f"According to the approved {source_org} document **{doc_title}**{notif_prefix}:\n\n"
-                        f"{body}"
-                    )
-
-            # 6. Procedural & Action Intent (e.g. "how the fastag can be reloaded", "how to recharge", "how to lodge dispute")
+            # 3. Procedural & Action Intent (e.g. "how the fastag can be reloaded", "how to recharge", "how to lodge dispute")
             if query_intent == "PROCEDURAL_HOWTO":
-                # Clean section headers
                 clean_body = re.sub(r"^Section\s+\d+:\s*[^\n]+\n*", "", chunk_text, flags=re.MULTILINE).strip()
                 if "fastag" in query.lower() and ("reload" in query.lower() or "recharge" in query.lower()):
                     return (
@@ -348,12 +306,55 @@ class TwoLayerRAGEngine:
                         f"As per NPCI guidelines, disputes are investigated and wrongful deductions refunded to your account within **7 to 15 working days**.\n\n"
                         f"*Source: {source_org} Approved Document **{doc_title}**{notif_prefix}*"
                     )
-                return (
-                    f"According to the approved {source_org} document **{doc_title}**{notif_prefix}:\n\n"
-                    f"{clean_body}"
-                )
 
-            # 7. Default / General Factual / Requirements
+            # 4. Gemini Flash Grounded Synthesis for Conversational & General Factual Queries
+            if settings.USE_GEMINI_SYNTHESIS:
+                try:
+                    from backend.rag.gemini_service import gemini_service
+                    gemini_ans = gemini_service.synthesize_grounded_response(
+                        query=query,
+                        retrieved_chunks=matching_chunks,
+                        conversation_history=history_msgs
+                    )
+                    if gemini_ans and len(gemini_ans.strip()) > 20:
+                        return gemini_ans
+                except Exception as e:
+                    logger.warning(f"Gemini grounded synthesis fallback: {e}")
+
+            # 5. Numerical Limits & Thresholds Intent
+            if query_intent == "NUMERICAL_LIMITS":
+                sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
+                limit_sentences = [s.strip() for s in sentences if re.search(r"(₹|\b\d+%\b|\blimit\b|\bminimum\b|\bmaximum\b|\bcap\b|\bratio\b|\blakhs?\b|\bcrores?\b)", s, re.IGNORECASE)]
+                if limit_sentences:
+                    body = "\n\n".join(limit_sentences)
+                    return (
+                        f"According to the approved {source_org} document **{doc_title}**{notif_prefix}, the applicable limits are:\n\n"
+                        f"{body}"
+                    )
+
+            # 6. Charges & Penalties Intent
+            if query_intent == "CHARGES_PENALTIES":
+                sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
+                charge_sentences = [s.strip() for s in sentences if re.search(r"\b(charge|charges|fee|fees|penalty|penalties|penal interest|waived|prohibited from levying|rate plus)\b", s, re.IGNORECASE)]
+                if charge_sentences:
+                    body = "\n\n".join(charge_sentences)
+                    return (
+                        f"According to the approved {source_org} document **{doc_title}**{notif_prefix}, the rules regarding charges and penalties are:\n\n"
+                        f"{body}"
+                    )
+
+            # 7. Operating Hours & Settlement Timelines Intent
+            if query_intent == "OPERATING_HOURS_TIMELINES":
+                sentences = re.split(r"(?<=[.?!])\s+", chunk_text)
+                hour_sentences = [s.strip() for s in sentences if re.search(r"\b(24x7|operating hours|round-the-clock|batches|settlement|hours|working days|within \d+)\b", s, re.IGNORECASE)]
+                if hour_sentences:
+                    body = "\n\n".join(hour_sentences)
+                    return (
+                        f"According to the approved {source_org} document **{doc_title}**{notif_prefix}:\n\n"
+                        f"{body}"
+                    )
+
+            # 8. Default / General Factual / Requirements
             clean_body = re.sub(r"^Section\s+\d+:\s*[^\n]+\n*", "", chunk_text, flags=re.MULTILINE).strip()
             return f"According to the approved {source_org} document **{doc_title}**{notif_prefix}:\n\n{clean_body or chunk_text}"
 
@@ -376,7 +377,12 @@ class TwoLayerRAGEngine:
         db: Session,
         user_id: str,
         conversation_id: Optional[str],
-        raw_query: str
+        raw_query: str,
+        regulator_filter: Optional[List[str]] = None,
+        as_of_date: Optional[str] = None,
+        department_filter: Optional[str] = None,
+        requested_depth: Optional[str] = "concise",
+        tenant_id: str = "default_tenant"
     ) -> Dict[str, Any]:
         """
         Full Conversational & 2-Layer RAG Pipeline with Redis Context Mapping:
@@ -429,7 +435,11 @@ class TwoLayerRAGEngine:
                 "confidence": 1.0,
                 "citations": [],
                 "ambiguity_flags": [],
-                "clarification_needed": False
+                "clarification_needed": False,
+                "query_trace_id": str(uuid.uuid4()),
+                "regulator_scope": "ALL",
+                "as_of_date_applied": None,
+                "tokens_used": {"tokens_input": 50, "tokens_output": 50, "tokens_total": 100}
             }
 
         normalized_query = nlp_res["normalized_query"]
@@ -438,33 +448,52 @@ class TwoLayerRAGEngine:
         clarification_needed = nlp_res["clarification_needed"]
         query_intent = nlp_res.get("query_intent", "GENERAL_FACTUAL")
 
+        # Determine effective regulator and temporal filter
+        active_regulators = regulator_filter if (regulator_filter and regulator_filter != ["ALL"]) else nlp_res.get("detected_regulators", ["ALL"])
+        active_as_of_date = as_of_date or nlp_res.get("as_of_date")
+        query_trace_id = str(uuid.uuid4())
+
+        # Dynamic History Compaction via TokenBudgetController
+        from backend.rag.token_budget import token_budget_controller
+        from backend.rag.response_composer import response_composer
+
+        compacted_history, history_summary = token_budget_controller.compact_conversation_history(history_msgs)
+
         # Handle Knowledge Base Catalog / Available Documents Intent
         if query_intent == "CATALOG_DOCUMENT_LIST":
             docs = db.query(KnowledgeDocument).filter(KnowledgeDocument.processing_status == "indexed").all()
-            rbi_docs = [d for d in docs if d.source == "RBI"]
-            bank_docs = [d for d in docs if d.source != "RBI"]
+            rbi_docs = [d for d in docs if (getattr(d, "regulator", d.source) or "RBI") == "RBI"]
+            sebi_docs = [d for d in docs if getattr(d, "regulator", "") == "SEBI"]
+            irdai_docs = [d for d in docs if getattr(d, "regulator", "") == "IRDAI"]
+            bank_docs = [d for d in docs if getattr(d, "regulator", d.source) in ["INTERNAL", "BANK_POLICY"]]
 
-            rbi_md = "\n".join([f"- **{d.title}**" + (f" (Notification: `{d.notification_number}`)" if d.notification_number else "") for d in rbi_docs])
-            bank_md = "\n".join([f"- **{d.title}**" + (f" (Ref: `{d.notification_number}`)" if d.notification_number else "") for d in bank_docs])
+            rbi_md = "\n".join([f"- **{d.title}**" + (f" (Notification: `{d.notification_number}`)" if d.notification_number else "") for d in rbi_docs]) or "None indexed."
+            sebi_md = "\n".join([f"- **{d.title}**" + (f" (Notification: `{d.notification_number}`)" if d.notification_number else "") for d in sebi_docs]) or "None indexed."
+            irdai_md = "\n".join([f"- **{d.title}**" + (f" (Notification: `{d.notification_number}`)" if d.notification_number else "") for d in irdai_docs]) or "None indexed."
+            bank_md = "\n".join([f"- **{d.title}**" + (f" (Ref: `{d.notification_number}`)" if d.notification_number else "") for d in bank_docs]) or "None indexed."
 
             catalog_answer = (
-                "The approved knowledge base contains the following official RBI Master Directions and IDFC FIRST Bank policy documents:\n\n"
-                "### 🏛️ Reserve Bank of India (RBI) Master Directions & Regulations:\n"
+                "The approved knowledge base contains official regulatory directives and IDFC FIRST Bank policies across financial regulators:\n\n"
+                "### 🏛️ Reserve Bank of India (RBI) Regulations:\n"
                 f"{rbi_md}\n\n"
+                "### 📈 Securities and Exchange Board of India (SEBI) Regulations:\n"
+                f"{sebi_md}\n\n"
+                "### 🛡️ Insurance Regulatory and Development Authority (IRDAI) Regulations:\n"
+                f"{irdai_md}\n\n"
                 "### 🏦 IDFC FIRST Bank Internal Policies & Guidelines:\n"
                 f"{bank_md}\n\n"
-                "You can ask me detailed questions regarding transaction limits, operational rules, KYC documents, customer fraud liability, fee waivers, or loan LTV caps for any of these directives!"
+                "You can filter your questions by regulator or specify a historical date to inspect applicable guidelines!"
             )
 
             citations = [
                 {
-                    "source": "RBI / IDFC FIRST Bank",
-                    "document_title": "Official Knowledge Base Document Index",
+                    "source": "RBI / SEBI / IRDAI / IDFC",
+                    "document_title": "Approved Multi-Regulator Knowledge Base Index",
                     "notification_number": "INDEX-CATALOG-2024",
                     "publication_date": "2024-06-01",
                     "page_number": 1,
                     "section": "Approved Document Index",
-                    "snippet": "Approved repository index containing verified Reserve Bank of India Master Directions and IDFC FIRST Bank policies.",
+                    "snippet": "Approved repository index containing verified RBI, SEBI, IRDAI and IDFC FIRST Bank directives.",
                     "score": 1.0
                 }
             ]
@@ -478,7 +507,11 @@ class TwoLayerRAGEngine:
                 "confidence": 1.0,
                 "citations": citations,
                 "ambiguity_flags": [],
-                "clarification_needed": False
+                "clarification_needed": False,
+                "query_trace_id": query_trace_id,
+                "regulator_scope": ",".join(active_regulators),
+                "as_of_date_applied": active_as_of_date,
+                "tokens_used": {"tokens_input": 120, "tokens_output": 350, "tokens_total": 470}
             }
 
         # If pronoun is ambiguous and cannot be resolved reliably, prompt user for clarification
@@ -497,7 +530,11 @@ class TwoLayerRAGEngine:
                 "confidence": 0.0,
                 "citations": [],
                 "ambiguity_flags": [],
-                "clarification_needed": True
+                "clarification_needed": True,
+                "query_trace_id": query_trace_id,
+                "regulator_scope": ",".join(active_regulators),
+                "as_of_date_applied": active_as_of_date,
+                "tokens_used": {"tokens_input": 50, "tokens_output": 25, "tokens_total": 75}
             }
 
         # Step 2: Layer 1 — Conversation DB RAG
@@ -505,13 +542,19 @@ class TwoLayerRAGEngine:
             db, user_id, conversation_id, normalized_query, extracted_entities
         )
 
-        # Step 3: Layer 2 — Banking Knowledge Base RAG
-        kb_chunks = hybrid_vector_store.search(
+        # Step 3: Layer 2 — Multi-Regulator Knowledge Base RAG with Temporal Filtering
+        raw_kb_chunks = hybrid_vector_store.search(
             normalized_query,
-            top_k=settings.TOP_K_CHUNKS,
+            top_k=settings.TOP_K_CHUNKS + 2,
             threshold=settings.RETRIEVAL_THRESHOLD,
+            regulator_filter=active_regulators,
+            as_of_date=active_as_of_date,
+            tenant_id=tenant_id,
             db=db
         )
+
+        # Budget Allocation for Evidence Chunks
+        kb_chunks = token_budget_controller.allocate_evidence_chunks(raw_kb_chunks)[:settings.TOP_K_CHUNKS]
 
         # Step 4: Determine Source Type & Confidence
         source_type = "NO_SUPPORTED_SOURCE"
@@ -536,12 +579,18 @@ class TwoLayerRAGEngine:
         for chunk in kb_chunks:
             citations.append({
                 "source": chunk.get("source", "RBI"),
+                "document_id": chunk.get("document_id"),
                 "document_title": chunk.get("doc_title", "Approved Document"),
                 "notification_number": chunk.get("notification_number"),
                 "publication_date": chunk.get("publication_date"),
+                "effective_date": chunk.get("effective_date") or chunk.get("publication_date"),
+                "regulator": chunk.get("regulator", "RBI"),
+                "status": chunk.get("status", "active"),
                 "page_number": chunk.get("page_number", 1),
                 "section": chunk.get("section"),
                 "snippet": chunk.get("chunk_text", "")[:280] + ("..." if len(chunk.get("chunk_text", "")) > 280 else ""),
+                "source_offsets": chunk.get("source_offsets", {}),
+                "bounding_box": chunk.get("bounding_box", {}),
                 "score": chunk.get("score", 1.0)
             })
 
@@ -551,12 +600,18 @@ class TwoLayerRAGEngine:
         for cm in conv_matches:
             citations.append({
                 "source": "CONVERSATION_DATABASE",
+                "document_id": None,
                 "document_title": cm.get("document_title", "Conversation Memory"),
                 "notification_number": None,
                 "publication_date": None,
+                "effective_date": None,
+                "regulator": "INTERNAL",
+                "status": "active",
                 "page_number": 1,
                 "section": "Conversation History",
                 "snippet": cm.get("snippet", ""),
+                "source_offsets": {},
+                "bounding_box": {},
                 "score": cm.get("confidence", 0.95)
             })
 
@@ -575,7 +630,7 @@ class TwoLayerRAGEngine:
             resolved_entities,
             kb_chunks,
             conv_matches,
-            history_msgs=history_msgs
+            history_msgs=compacted_history
         )
 
         if raw_answer == FALLBACK_REFUSAL_MESSAGE:
@@ -597,7 +652,12 @@ class TwoLayerRAGEngine:
             citations = []
             confidence = 0.0
 
-        # Step 7: Update Redis Context Mapping
+        # Step 7: Response Composer Formatting & Anti-Leakage Linter
+        final_answer = response_composer.compose_structured_response(
+            validated_answer, citations, unique_ambiguities, query_intent
+        )
+
+        # Step 8: Update Redis Context Mapping
         conv_key = conversation_id or "default"
         redis_cache.cache_conversation_context(
             user_id=user_id,
@@ -606,7 +666,9 @@ class TwoLayerRAGEngine:
                 "last_query": raw_query,
                 "normalized_query": normalized_query,
                 "resolved_entities": resolved_entities,
-                "intent": query_intent
+                "intent": query_intent,
+                "regulator_scope": active_regulators,
+                "as_of_date": active_as_of_date
             }
         )
         if resolved_entities:
@@ -615,21 +677,39 @@ class TwoLayerRAGEngine:
                 conv_id=conv_key,
                 entity_name=resolved_entities[0],
                 facts={
-                    "last_answer": validated_answer[:300],
+                    "last_answer": final_answer[:300],
                     "doc_title": kb_chunks[0].get("doc_title") if kb_chunks else ""
                 }
             )
+
+        # Compute telemetry
+        tokens_telemetry = token_budget_controller.get_token_telemetry(
+            system_text="Grounded Regulatory Compliance Assistant",
+            query_text=raw_query,
+            evidence_chunks=kb_chunks,
+            history_turns=compacted_history,
+            output_text=final_answer
+        )
 
         return {
             "original_query": raw_query,
             "normalized_query": normalized_query,
             "resolved_entities": resolved_entities,
-            "answer": validated_answer,
+            "answer": final_answer,
             "source_type": source_type,
             "confidence": round(confidence, 3),
             "citations": citations,
             "ambiguity_flags": unique_ambiguities,
-            "clarification_needed": False
+            "clarification_needed": False,
+            "query_trace_id": query_trace_id,
+            "regulator_scope": ",".join(active_regulators),
+            "as_of_date_applied": active_as_of_date,
+            "tokens_used": tokens_telemetry
         }
 
+    # Alias for flexibility
+    answer_query = process_query
+
 rag_engine = TwoLayerRAGEngine()
+
+

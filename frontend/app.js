@@ -1,6 +1,6 @@
 /**
- * CHATGPTxIDFC — Frontend Application Logic
- * Ultra-Premium Real-Life ChatGPT 4o Experience with Two-Layer Banking RAG
+ * CHATGPTxIDFC — Governed Regulatory Knowledge Assistant Logic
+ * Ultra-Premium ChatGPT 4o Experience with Multi-Regulator RAG, Visual Passage Viewer & Admin MIS
  */
 
 const API_BASE = "";
@@ -17,16 +17,20 @@ const state = {
   selectedUploadFile: null,
   ttsRate: 1.0,
   autoTts: false,
-  sttReview: true
+  sttReview: true,
+  // Scoped Query Filter State (PRD FR-06)
+  activeRegulator: "ALL",
+  activeAsOfDate: "",
+  activeDepth: "concise"
 };
 
 // Curated Prompts by Category
 const PROMPTS_BY_CATEGORY = {
   all: [
     { title: "RBI KYC & OVD Rules", sub: "Officially valid documents and V-CIP requirements", prompt: "What are the latest RBI KYC requirements and Officially Valid Documents (OVD)?" },
-    { title: "NEFT 24x7 Settlement", sub: "Operating hours, 48 batches, and limit rules", prompt: "What is NEFT and what are its operating hours and transaction limits?" },
+    { title: "SEBI LODR Disclosures", sub: "30 mins / 12 hrs / 24 hrs material disclosure mandates", prompt: "What are the disclosure timelines for material events under SEBI LODR Regulation 30?" },
     { title: "Digital Lending 2022", sub: "Cooling-off look-up period & KFS disclosures", prompt: "What are the cooling-off period and KFS rules under RBI Digital Lending Directions 2022?" },
-    { title: "Housing Loan LTV Caps", sub: "Max 90% up to ₹30L, 80% up to ₹75L limits", prompt: "What are the Loan-to-Value (LTV) ratio caps for housing loans under RBI regulations?" }
+    { title: "IRDAI Cyber Security", sub: "6-hour reporting mandate and India data localization", prompt: "What are the IRDAI cyber incident reporting timelines and data localization rules?" }
   ],
   rbi: [
     { title: "KYC Master Direction 2016", sub: "Periodic KYC updates & non-face-to-face onboarding", prompt: "Explain the RBI Master Direction on KYC 2016 periodic update requirements." },
@@ -34,17 +38,17 @@ const PROMPTS_BY_CATEGORY = {
     { title: "Customer Protection (Fraud)", sub: "Zero liability for third-party fraud notified in 3 days", prompt: "What is customer liability in unauthorized electronic banking transactions?" },
     { title: "Fair Practices Code (FPC)", sub: "Loan sanction terms & transparent penal charges", prompt: "What are the key directives in RBI Master Direction on Fair Practices Code?" }
   ],
-  payments: [
-    { title: "NEFT Operating Timings", sub: "Round the clock 24x7x365 batch settlement process", prompt: "What is NEFT and what are its operating hours and transaction limits?" },
-    { title: "RTGS vs NEFT Rules", sub: "Gross settlement min ₹2,00,000 threshold comparison", prompt: "What is RTGS and how does its minimum limit compare with NEFT?" },
-    { title: "Failed Transaction TAT (T+1)", sub: "Auto-reversal timeline and ₹100/day compensation", prompt: "What is the RBI mandated compensation for failed ATM and electronic transactions?" },
-    { title: "Card-on-File Tokenization", sub: "RBI guidelines on replacing actual card numbers with tokens", prompt: "What are the RBI regulations regarding Card-on-File Tokenization (CoFT)?" }
+  sebi: [
+    { title: "LODR Material Disclosures", sub: "Timelines for event disclosures under Regulation 30", prompt: "What are the disclosure timelines for material events under SEBI LODR Regulation 30?" },
+    { title: "Related Party Transactions", sub: "Thresholds and prior audit committee approval norms", prompt: "What are the approval thresholds for Related Party Transactions under SEBI LODR?" },
+    { title: "Intermediaries Cyber Security", sub: "VAPT twice a year and 6-hour CERT-In incident reporting", prompt: "What are the cybersecurity and VAPT mandates for stock brokers under SEBI circular 2023?" },
+    { title: "Insider Trading Code", sub: "Pre-clearance and trading window closure requirements", prompt: "What are the key compliance requirements under SEBI Prohibition of Insider Trading regulations?" }
   ],
-  lending: [
-    { title: "Housing Loan LTV Ratios", sub: "Prudential limits for individual residential housing loans", prompt: "What are the Loan-to-Value (LTV) ratio caps for housing loans under RBI regulations?" },
-    { title: "IDFC Savings Account", sub: "Monthly interest credit compounding & zero charges", prompt: "What are the key benefits of IDFC FIRST Bank Savings Account monthly interest credit?" },
-    { title: "V-CIP Video KYC Process", sub: "Live video verification, geo-tagging & Aadhaar XML", prompt: "Explain the step-by-step V-CIP process for opening an account digitally." },
-    { title: "Penal Charges Directives", sub: "Reasonable penal charges vs penal interest compounding", prompt: "What are the latest RBI guidelines on Fair Lending Practice regarding penal charges?" }
+  irdai: [
+    { title: "IRDAI Cyber Guidelines", sub: "CISO appointment and mandatory domestic data localization", prompt: "What are the IRDAI cyber incident reporting timelines and data localization rules?" },
+    { title: "Policyholder Protection 2024", sub: "30-day electronic free look period & 30-day complaint resolution", prompt: "What are the grievance resolution timelines and free look period rules under IRDAI 2024 regulations?" },
+    { title: "Customer Information Sheet", sub: "Standard CIS disclosure of insurance benefits and exclusions", prompt: "Explain the mandatory Customer Information Sheet (CIS) requirement under IRDAI guidelines." },
+    { title: "Outsourcing by Insurers", sub: "Core activities prohibition and confidentiality covenants", prompt: "What are the IRDAI regulations governing outsourcing of activities by insurance companies?" }
   ]
 };
 
@@ -81,6 +85,10 @@ const DOM = {
   adminKbBtnContainer: document.getElementById("admin-kb-btn-container"),
   btnOpenAdminKb: document.getElementById("btn-open-admin-kb"),
   toastContainer: document.getElementById("toast-container"),
+  // Filter Bar
+  asOfDateSelect: document.getElementById("as-of-date-select"),
+  requestedDepthSelect: document.getElementById("requested-depth-select"),
+  regulatorChips: document.getElementById("regulator-chips"),
   // Modals
   authModal: document.getElementById("auth-modal"),
   authModalTitle: document.getElementById("auth-modal-title"),
@@ -95,10 +103,12 @@ const DOM = {
   authTogglePrompt: document.getElementById("auth-toggle-prompt"),
   btnQuickCustomer: document.getElementById("btn-quick-customer"),
   btnQuickAdmin: document.getElementById("btn-quick-admin"),
+  btnQuickDevesh: document.getElementById("btn-quick-devesh"),
   accountDrawer: document.getElementById("account-drawer"),
   savedAccountsList: document.getElementById("saved-accounts-list"),
   btnAddAccount: document.getElementById("btn-add-account"),
   btnLogoutCurrent: document.getElementById("btn-logout-current"),
+  // Admin KB & MIS
   adminKbModal: document.getElementById("admin-kb-modal"),
   uploadDropzone: document.getElementById("upload-dropzone"),
   kbFileInput: document.getElementById("kb-file-input"),
@@ -113,13 +123,33 @@ const DOM = {
   kbDocumentsTbody: document.getElementById("kb-documents-tbody"),
   kbDocCount: document.getElementById("kb-doc-count"),
   btnReindexAll: document.getElementById("btn-reindex-all"),
+  adminFilterRegulator: document.getElementById("admin-filter-regulator"),
+  misMetricsSummary: document.getElementById("mis-metrics-summary"),
+  misRegulatorSummary: document.getElementById("mis-regulator-summary"),
+  misConsumptionSummary: document.getElementById("mis-consumption-summary"),
+  // Passage Viewer
+  passageViewerModal: document.getElementById("passage-viewer-modal"),
+  pvDocTitle: document.getElementById("pv-doc-title"),
+  pvDocMeta: document.getElementById("pv-doc-meta"),
+  pvStatusBadge: document.getElementById("pv-status-badge"),
+  pvRegulatorBadge: document.getElementById("pv-regulator-badge"),
+  pvPageBadge: document.getElementById("pv-page-badge"),
+  pvSectionBadge: document.getElementById("pv-section-badge"),
+  pvHighlightContainer: document.getElementById("pv-highlight-container"),
+  // Feedback Modal
+  feedbackTriageModal: document.getElementById("feedback-triage-modal"),
+  feedbackTriageForm: document.getElementById("feedback-triage-form"),
+  feedbackTargetMsgId: document.getElementById("feedback-target-msg-id"),
+  feedbackCategorySelect: document.getElementById("feedback-category-select"),
+  feedbackCommentInput: document.getElementById("feedback-comment-input"),
+  // Settings
   settingsModal: document.getElementById("settings-modal"),
   settingSttReview: document.getElementById("setting-stt-review"),
   settingAutoTts: document.getElementById("setting-auto-tts"),
   settingTtsRate: document.getElementById("setting-tts-rate")
 };
 
-// ==================== TOAST NOTIFICATIONS ====================
+// ==================== TOAST & MODAL HELPERS ====================
 function showToast(msg) {
   if (!DOM.toastContainer) return;
   const toast = document.createElement("div");
@@ -129,10 +159,24 @@ function showToast(msg) {
   setTimeout(() => toast.remove(), 3000);
 }
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function closeAllModals() {
+  document.querySelectorAll(".modal-overlay").forEach(m => m.classList.add("hidden"));
+}
+
 // ==================== AUTHENTICATION & MULTI-ACCOUNT ====================
 
 function getActiveAccount() {
-  if (state.accounts.length > 0 && state.activeAccountIndex < state.accounts.length) {
+  if (state.accounts && state.accounts.length > 0 && state.activeAccountIndex < state.accounts.length) {
     return state.accounts[state.activeAccountIndex];
   }
   return null;
@@ -154,7 +198,7 @@ function loadAccountsFromStorage() {
     const activeIdx = localStorage.getItem("chatgptxidfc_active_idx");
     if (raw) {
       state.accounts = JSON.parse(raw);
-      state.activeAccountIndex = activeIdx ? parseInt(activeIdx, 10) : 0;
+      state.activeAccountIndex = activeIdx ? Math.min(Math.max(0, parseInt(activeIdx, 10)), Math.max(0, state.accounts.length - 1)) : 0;
     }
   } catch (e) {
     console.error("Failed to load accounts from storage:", e);
@@ -174,75 +218,172 @@ async function validateOrRefreshToken() {
     } catch (e) {
       console.log("Token validation check error:", e);
     }
+
+    // Attempt seamless session refresh on backend for this active account
+    try {
+      const refreshRes = await fetch(`${API_BASE}/api/auth/switch-account`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: account.id, email: account.email })
+      });
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        account.token = refreshData.access_token;
+        account.name = refreshData.user.name;
+        account.role = refreshData.user.role;
+        saveAccountsToStorage();
+        updateUIForAuth();
+        return refreshData.access_token;
+      }
+    } catch (e) {
+      console.log("Session refresh error:", e);
+    }
+    return account.token;
   }
 
-  // Token is missing, expired, or invalid. Auto-login default customer user.
-  try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "customer@idfcbank.com", password: "Customer@123" })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const newAcc = {
-        id: data.user.id,
-        name: data.user.name,
-        email: data.user.email,
-        role: data.user.role,
-        token: data.access_token
-      };
-      addAccount(newAcc);
-      return data.access_token;
+  // Only if there are zero saved accounts, bootstrap initial demo user
+  if (!state.accounts || state.accounts.length === 0) {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "customer@idfcbank.com", password: "Customer@123" })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newAcc = {
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role,
+          token: data.access_token
+        };
+        addAccount(newAcc);
+        return data.access_token;
+      }
+    } catch (err) {
+      console.error("Auto session recover failed:", err);
     }
-  } catch (err) {
-    console.error("Auto session recover failed:", err);
   }
   return null;
 }
 
 async function authenticatedFetch(url, options = {}) {
-  let headers = { ...(options.headers || {}), ...getAuthHeader() };
-  let res;
-  try {
-    res = await fetch(url, { ...options, headers });
-  } catch (err) {
-    // Retry once after 600ms if initial connection failed (e.g. server auto-reload)
-    if (options.signal && options.signal.aborted) throw err;
-    await new Promise(r => setTimeout(r, 600));
-    res = await fetch(url, { ...options, headers });
-  }
-
-  if (res && res.status === 401) {
-    const newToken = await validateOrRefreshToken();
-    if (newToken) {
-      headers = { ...(options.headers || {}), "Authorization": `Bearer ${newToken}` };
-      res = await fetch(url, { ...options, headers });
-    }
-  }
-  return res;
+  let token = await validateOrRefreshToken();
+  const headers = {
+    ...options.headers,
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  };
+  return fetch(url, { ...options, headers });
 }
 
 function updateUIForAuth() {
-  const account = getActiveAccount();
-  if (account) {
-    DOM.userDisplayName.textContent = account.name;
-    DOM.authBtnLabel.textContent = account.name.split(" ")[0];
-    DOM.userAvatarPlaceholder.innerHTML = `<span>${escapeHtml(account.name.charAt(0).toUpperCase())}</span>`;
-    
-    // Check admin role
-    if (account.role === "admin") {
-      DOM.adminKbBtnContainer.classList.remove("hidden");
-    } else {
-      DOM.adminKbBtnContainer.classList.add("hidden");
+  const active = getActiveAccount();
+  if (active) {
+    if (DOM.authBtnLabel) DOM.authBtnLabel.textContent = "Switch Account";
+    if (DOM.userDisplayName) DOM.userDisplayName.textContent = active.name;
+    if (DOM.userAvatarPlaceholder) {
+      DOM.userAvatarPlaceholder.innerHTML = `<span>${active.name.charAt(0).toUpperCase()}</span>`;
+    }
+    if (DOM.adminKbBtnContainer) {
+      DOM.adminKbBtnContainer.classList.toggle("hidden", active.role !== "admin");
     }
   } else {
-    DOM.userDisplayName.textContent = "Guest User";
-    DOM.authBtnLabel.textContent = "Log in";
-    DOM.userAvatarPlaceholder.innerHTML = `<span>G</span>`;
-    DOM.adminKbBtnContainer.classList.add("hidden");
+    if (DOM.authBtnLabel) DOM.authBtnLabel.textContent = "Log in";
+    if (DOM.userDisplayName) DOM.userDisplayName.textContent = "Guest User";
+    if (DOM.userAvatarPlaceholder) DOM.userAvatarPlaceholder.innerHTML = `<span>G</span>`;
+    if (DOM.adminKbBtnContainer) DOM.adminKbBtnContainer.classList.add("hidden");
   }
   renderSavedAccountsList();
+}
+
+function renderSavedAccountsList() {
+  if (!DOM.savedAccountsList) return;
+  DOM.savedAccountsList.innerHTML = "";
+
+  state.accounts.forEach((acc, idx) => {
+    const isCurrent = idx === state.activeAccountIndex;
+    const item = document.createElement("div");
+    item.className = `account-item ${isCurrent ? "active-account" : ""}`;
+    item.innerHTML = `
+      <div class="account-item-avatar"><span>${acc.name.charAt(0).toUpperCase()}</span></div>
+      <div class="account-item-info">
+        <div class="account-item-name">${escapeHtml(acc.name)} ${acc.role === 'admin' ? '<span class="role-badge">Admin</span>' : ''}</div>
+        <div class="account-item-email">${escapeHtml(acc.email)}</div>
+      </div>
+      ${isCurrent ? '<i class="fa-solid fa-check check-current"></i>' : ''}
+    `;
+
+    item.addEventListener("click", async () => {
+      await switchAccount(idx);
+      if (DOM.accountDrawer) DOM.accountDrawer.classList.add("hidden");
+    });
+
+    DOM.savedAccountsList.appendChild(item);
+  });
+}
+
+function addAccount(acc) {
+  const existingIdx = state.accounts.findIndex(a => a.email.toLowerCase() === acc.email.toLowerCase());
+  if (existingIdx !== -1) {
+    state.accounts[existingIdx] = { ...state.accounts[existingIdx], ...acc };
+    state.activeAccountIndex = existingIdx;
+  } else {
+    state.accounts.push(acc);
+    state.activeAccountIndex = state.accounts.length - 1;
+  }
+  saveAccountsToStorage();
+  updateUIForAuth();
+}
+
+async function switchAccount(idx) {
+  if (idx >= 0 && idx < state.accounts.length) {
+    state.activeAccountIndex = idx;
+    saveAccountsToStorage();
+    const target = state.accounts[idx];
+
+    // Refresh JWT session on backend for target account
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/switch-account`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: target.id, email: target.email })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        target.token = data.access_token;
+        target.name = data.user.name;
+        target.role = data.user.role;
+        saveAccountsToStorage();
+      }
+    } catch (e) {
+      console.log("Account switch backend sync error:", e);
+    }
+
+    updateUIForAuth();
+    showToast(`Switched to ${target.name}`);
+    state.currentConversationId = null;
+    await loadConversations();
+    DOM.messagesStream.innerHTML = "";
+    DOM.messagesStream.appendChild(DOM.welcomeHero);
+    DOM.welcomeHero.classList.remove("hidden");
+  }
+}
+
+function logoutCurrentAccount() {
+  if (state.accounts.length > 0) {
+    const removed = state.accounts.splice(state.activeAccountIndex, 1);
+    state.activeAccountIndex = Math.max(0, state.accounts.length - 1);
+    saveAccountsToStorage();
+    updateUIForAuth();
+    showToast(`Logged out ${removed[0]?.name || ''}`);
+    state.currentConversationId = null;
+    loadConversations();
+    DOM.messagesStream.innerHTML = "";
+    DOM.messagesStream.appendChild(DOM.welcomeHero);
+    DOM.welcomeHero.classList.remove("hidden");
+    if (DOM.accountDrawer) DOM.accountDrawer.classList.add("hidden");
+  }
 }
 
 async function loginUser(email, password) {
@@ -265,7 +406,7 @@ async function loginUser(email, password) {
       token: data.access_token
     });
     closeAllModals();
-    showToast(`Signed in as ${data.user.name}`);
+    showToast(`Logged in as ${data.user.name}`);
     await loadConversations();
   } catch (err) {
     alert(err.message);
@@ -292,32 +433,25 @@ async function registerUser(name, email, password) {
       token: data.access_token
     });
     closeAllModals();
-    showToast(`Registered successfully!`);
+    showToast(`Account created for ${data.user.name}`);
     await loadConversations();
   } catch (err) {
     alert(err.message);
   }
 }
 
-async function googleLogin(email = null, name = null) {
+async function googleLogin(email = "devesh.pandey1405@gmail.com", name = "devesh pandey1405") {
   try {
-    const mockEmail = email || prompt("Enter Google Account Email for OAuth Simulation:", "siddharth.google@idfcbank.com");
-    if (!mockEmail) return;
-    const mockName = name || mockEmail.split("@")[0].replace(".", " ");
-
     const res = await fetch(`${API_BASE}/api/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         credential: "mock_google_oauth_token_" + Date.now(),
-        email: mockEmail,
-        name: mockName
+        email: email,
+        name: name
       })
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Google Login failed");
-    }
+    if (!res.ok) throw new Error("Google SSO authentication failed");
     const data = await res.json();
     addAccount({
       id: data.user.id,
@@ -327,176 +461,100 @@ async function googleLogin(email = null, name = null) {
       token: data.access_token
     });
     closeAllModals();
-    showToast(`Google authenticated as ${data.user.name}`);
+    showToast(`Signed in as ${data.user.name}`);
     await loadConversations();
   } catch (err) {
     alert(err.message);
   }
 }
 
-function addAccount(accData) {
-  const existingIdx = state.accounts.findIndex(a => a.email.toLowerCase() === accData.email.toLowerCase());
-  if (existingIdx >= 0) {
-    state.accounts[existingIdx] = accData;
-    state.activeAccountIndex = existingIdx;
-  } else {
-    state.accounts.push(accData);
-    state.activeAccountIndex = state.accounts.length - 1;
-  }
-  saveAccountsToStorage();
-  updateUIForAuth();
-}
-
-function switchAccount(index) {
-  if (index >= 0 && index < state.accounts.length) {
-    state.activeAccountIndex = index;
-    state.currentConversationId = null;
-    saveAccountsToStorage();
-    updateUIForAuth();
-    loadConversations();
-    DOM.messagesStream.innerHTML = "";
-    DOM.messagesStream.appendChild(DOM.welcomeHero);
-    DOM.welcomeHero.classList.remove("hidden");
-    closeAllModals();
-    showToast(`Switched account to ${state.accounts[index].name}`);
-  }
-}
-
-function logoutCurrentAccount() {
-  if (state.accounts.length > 0) {
-    const name = state.accounts[state.activeAccountIndex].name;
-    state.accounts.splice(state.activeAccountIndex, 1);
-    state.activeAccountIndex = 0;
-    state.currentConversationId = null;
-    saveAccountsToStorage();
-    updateUIForAuth();
-    loadConversations();
-    DOM.messagesStream.innerHTML = "";
-    DOM.messagesStream.appendChild(DOM.welcomeHero);
-    DOM.welcomeHero.classList.remove("hidden");
-    closeAllModals();
-    showToast(`Logged out ${name}`);
-  }
-}
-
-function renderSavedAccountsList() {
-  DOM.savedAccountsList.innerHTML = "";
-  if (state.accounts.length === 0) {
-    DOM.savedAccountsList.innerHTML = `<div class="list-skeleton">No accounts signed in.</div>`;
-    return;
-  }
-
-  state.accounts.forEach((acc, idx) => {
-    const isActive = idx === state.activeAccountIndex;
-    const card = document.createElement("div");
-    card.className = `account-item-card ${isActive ? "active" : ""}`;
-    card.innerHTML = `
-      <div class="account-card-left">
-        <div class="user-avatar" style="width:28px;height:28px;font-size:11px;">
-          <span>${escapeHtml(acc.name.charAt(0).toUpperCase())}</span>
-        </div>
-        <div>
-          <strong style="font-size:13px;">${escapeHtml(acc.name)}</strong>
-          <span style="display:block;font-size:11px;color:var(--text-muted);">${escapeHtml(acc.email)}</span>
-        </div>
-      </div>
-      <div>
-        ${isActive ? '<span class="badge-active">Active</span>' : '<button class="btn btn-chatgpt-ghost btn-sm">Switch</button>'}
-      </div>
-    `;
-    card.addEventListener("click", () => switchAccount(idx));
-    DOM.savedAccountsList.appendChild(card);
-  });
-}
-
-// ==================== CONVERSATIONS ====================
+// ==================== CONVERSATIONS (SIDEBAR) ====================
 
 async function loadConversations(searchQuery = null) {
-  const account = getActiveAccount();
-  if (!account) {
-    DOM.conversationList.innerHTML = `<div class="list-skeleton">Sign in to see conversation history.</div>`;
-    return;
-  }
-
   try {
     const url = searchQuery
-      ? `${API_BASE}/api/conversations/search?q=${encodeURIComponent(searchQuery)}`
+      ? `${API_BASE}/api/conversations?search=${encodeURIComponent(searchQuery)}`
       : `${API_BASE}/api/conversations`;
 
     const res = await authenticatedFetch(url);
-    if (!res.ok) throw new Error("Failed to load conversations");
-    state.conversations = await res.json();
-    renderConversationList(state.conversations);
+    if (!res.ok) return;
+    const data = await res.json();
+    state.conversations = data;
+    renderConversationList(data);
   } catch (err) {
-    console.error(err);
-    DOM.conversationList.innerHTML = `<div class="list-skeleton">No conversations yet.</div>`;
+    console.error("Failed to load conversations:", err);
   }
 }
 
 function renderConversationList(convs) {
+  if (!DOM.conversationList) return;
   DOM.conversationList.innerHTML = "";
+
   if (convs.length === 0) {
-    DOM.conversationList.innerHTML = `<div class="list-skeleton">No conversations yet.</div>`;
+    DOM.conversationList.innerHTML = `<div class="empty-chat-list">No conversations yet</div>`;
     return;
   }
 
-  // Group by Today, Yesterday, Previous 7 Days, Previous 30 Days
+  // Date Grouping (Today, Yesterday, Previous 7 Days, Older)
   const now = new Date();
   const groups = {
-    "Today": [],
-    "Yesterday": [],
-    "Previous 7 Days": [],
-    "Previous 30 Days": []
+    today: [],
+    yesterday: [],
+    prev7: [],
+    older: []
   };
 
   convs.forEach(c => {
-    const updated = new Date(c.updated_at);
-    const diffDays = Math.floor((now - updated) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) groups["Today"].push(c);
-    else if (diffDays === 1) groups["Yesterday"].push(c);
-    else if (diffDays <= 7) groups["Previous 7 Days"].push(c);
-    else groups["Previous 30 Days"].push(c);
+    const cDate = new Date(c.updated_at || c.created_at);
+    const diffDays = Math.floor((now - cDate) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) groups.today.push(c);
+    else if (diffDays === 1) groups.yesterday.push(c);
+    else if (diffDays < 7) groups.prev7.push(c);
+    else groups.older.push(c);
   });
 
-  Object.keys(groups).forEach(grpTitle => {
-    const items = groups[grpTitle];
-    if (items.length > 0) {
-      const header = document.createElement("div");
-      header.className = "conversation-group-title";
-      header.textContent = grpTitle;
-      DOM.conversationList.appendChild(header);
+  const renderGroup = (label, items) => {
+    if (items.length === 0) return;
+    const grpDiv = document.createElement("div");
+    grpDiv.className = "conv-group";
+    grpDiv.innerHTML = `<div class="conv-group-title">${label}</div>`;
 
-      items.forEach(c => {
-        const item = document.createElement("div");
-        item.className = `conversation-item ${c.id === state.currentConversationId ? "active" : ""}`;
-        item.dataset.id = c.id;
-        item.innerHTML = `
-          <span class="conv-title-text" title="${escapeHtml(c.title)}">${escapeHtml(c.title)}</span>
-          <div class="conv-item-actions">
-            <button class="conv-action-btn btn-rename" title="Rename"><i class="fa-solid fa-pen"></i></button>
-            <button class="conv-action-btn btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
-          </div>
-        `;
+    items.forEach(c => {
+      const isSelected = c.id === state.currentConversationId;
+      const item = document.createElement("div");
+      item.className = `conv-item ${isSelected ? "active" : ""}`;
+      item.innerHTML = `
+        <div class="conv-title-text" title="${escapeHtml(c.title)}">${escapeHtml(c.title)}</div>
+        <div class="conv-item-actions">
+          <button class="conv-action-btn btn-rename" title="Rename"><i class="fa-solid fa-pen"></i></button>
+          <button class="conv-action-btn btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `;
 
-        item.addEventListener("click", (e) => {
-          if (e.target.closest(".btn-rename")) {
-            e.stopPropagation();
-            renameConversationPrompt(c.id, c.title);
-          } else if (e.target.closest(".btn-delete")) {
-            e.stopPropagation();
-            deleteConversationPrompt(c.id);
-          } else {
-            selectConversation(c.id);
-          }
-        });
-
-        DOM.conversationList.appendChild(item);
+      item.querySelector(".conv-title-text").addEventListener("click", () => selectConversation(c.id));
+      item.querySelector(".btn-rename").addEventListener("click", (e) => {
+        e.stopPropagation();
+        renameConversationPrompt(c.id, c.title);
       });
-    }
-  });
+      item.querySelector(".btn-delete").addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteConversationPrompt(c.id);
+      });
+
+      grpDiv.appendChild(item);
+    });
+
+    DOM.conversationList.appendChild(grpDiv);
+  };
+
+  renderGroup("Today", groups.today);
+  renderGroup("Yesterday", groups.yesterday);
+  renderGroup("Previous 7 Days", groups.prev7);
+  renderGroup("Older", groups.older);
 }
 
 async function selectConversation(id) {
+  if (state.currentConversationId === id) return;
   state.currentConversationId = id;
   renderConversationList(state.conversations);
 
@@ -564,6 +622,41 @@ async function deleteConversationPrompt(id) {
   }
 }
 
+// ==================== VISUAL PASSAGE VIEWER (PRD Section 5.3 & FR-08, FR-09) ====================
+
+function openPassageViewer(citation) {
+  if (!DOM.passageViewerModal) return;
+
+  const docTitle = citation.document_title || "Regulatory Circular";
+  const notif = citation.notification_number || "Official Notification";
+  const reg = citation.regulator || citation.source || "RBI";
+  const status = citation.status || "ACTIVE";
+  const page = citation.page_number || 1;
+  const section = citation.section || "General";
+  const snippet = citation.snippet || "";
+
+  if (DOM.pvDocTitle) DOM.pvDocTitle.textContent = docTitle;
+  if (DOM.pvDocMeta) DOM.pvDocMeta.textContent = `Authority: ${reg} • Ref: ${notif} • Page ${page}`;
+  if (DOM.pvStatusBadge) DOM.pvStatusBadge.textContent = `${status.toUpperCase()} VERSION`;
+  if (DOM.pvRegulatorBadge) DOM.pvRegulatorBadge.textContent = reg;
+  if (DOM.pvPageBadge) DOM.pvPageBadge.textContent = `Page ${page}`;
+  if (DOM.pvSectionBadge) DOM.pvSectionBadge.textContent = section;
+
+  if (DOM.pvHighlightContainer) {
+    DOM.pvHighlightContainer.innerHTML = `
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+        <i class="fa-solid fa-highlighter" style="color:#f59e0b;"></i> Supporting Passage (Section: <strong>${escapeHtml(section)}</strong>):
+      </div>
+      <div class="passage-highlight-text">"${escapeHtml(snippet)}"</div>
+      <div style="margin-top:14px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border-subtle);padding-top:8px;">
+        <i class="fa-solid fa-lock"></i> Row-level verified citation bound to Document Version <code>${escapeHtml(notif)}</code>.
+      </div>
+    `;
+  }
+
+  DOM.passageViewerModal.classList.remove("hidden");
+}
+
 // ==================== CHAT PIPELINE & MESSAGES ====================
 
 function renderMessage(role, content, meta = {}) {
@@ -612,25 +705,24 @@ function renderMessage(role, content, meta = {}) {
       badgeIcon = "fa-circle-exclamation";
     }
 
-    // Do not show distracting badges for pure conversational greetings
     const badgeHtml = meta.source_type === "CONVERSATIONAL" 
       ? "" 
       : `<div class="source-badge ${badgeClass}"><i class="fa-solid ${badgeIcon}"></i> ${badgeText}</div>`;
 
-    // Normalized Query Tag
+    // Normalized Query Tag (Omit for conversational turns)
     let normTagHtml = "";
-    if (meta.normalized_query && meta.normalized_query !== content) {
+    if (meta.source_type !== "CONVERSATIONAL" && meta.normalized_query && meta.normalized_query.trim() !== content.trim()) {
       normTagHtml = `<div class="normalized-query-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> Interpreted: "${escapeHtml(meta.normalized_query)}"</div>`;
     }
 
-    // Citations Accordion
+    // Citations Accordion (Clickable with Visual Passage Highlighter)
     let citationsHtml = "";
     if (meta.citations && meta.citations.length > 0) {
-      const citeCards = meta.citations.map(c => `
-        <div class="citation-card">
+      const citeCards = meta.citations.map((c, cIdx) => `
+        <div class="citation-card clickable-citation" data-idx="${cIdx}">
           <div class="citation-header">
             <span class="citation-title">${escapeHtml(c.document_title)} ${c.notification_number ? `(${escapeHtml(c.notification_number)})` : ''}</span>
-            <span class="citation-page">Page ${c.page_number || 1} • ${(c.score * 100).toFixed(0)}% match</span>
+            <span class="citation-page"><i class="fa-solid fa-arrow-up-right-from-square"></i> Page ${c.page_number || 1} • ${(c.score * 100).toFixed(0)}% match</span>
           </div>
           <div class="citation-snippet">"${escapeHtml(c.snippet)}"</div>
         </div>
@@ -639,7 +731,7 @@ function renderMessage(role, content, meta = {}) {
       citationsHtml = `
         <div class="citations-wrapper">
           <button class="citations-toggle-btn" type="button">
-            <i class="fa-solid fa-chevron-down"></i> ${meta.citations.length} verified source citation(s)
+            <i class="fa-solid fa-chevron-down"></i> ${meta.citations.length} verified source citation(s) — Click to view passage
           </button>
           <div class="citations-list hidden">
             ${citeCards}
@@ -675,7 +767,7 @@ function renderMessage(role, content, meta = {}) {
         <button class="action-icon-btn btn-thumb-up" title="Good response">
           <i class="fa-regular fa-thumbs-up"></i>
         </button>
-        <button class="action-icon-btn btn-thumb-down" title="Bad response">
+        <button class="action-icon-btn btn-thumb-down" title="Report issue / Quality triage">
           <i class="fa-regular fa-thumbs-down"></i>
         </button>
       </div>
@@ -709,6 +801,17 @@ function renderMessage(role, content, meta = {}) {
       });
     }
 
+    // Clickable Citation Cards -> Open Visual Passage Viewer
+    const citeCards = row.querySelectorAll(".clickable-citation");
+    citeCards.forEach(card => {
+      card.addEventListener("click", () => {
+        const idx = parseInt(card.getAttribute("data-idx"), 10);
+        if (meta.citations && meta.citations[idx]) {
+          openPassageViewer(meta.citations[idx]);
+        }
+      });
+    });
+
     const copyBtn = row.querySelector(".btn-copy-msg");
     if (copyBtn) {
       copyBtn.addEventListener("click", () => {
@@ -733,14 +836,14 @@ function renderMessage(role, content, meta = {}) {
         showToast("Feedback recorded");
         if (meta && meta.assistant_message_id) {
           try {
-            await fetch(`${API_BASE}/api/chat/feedback`, {
+            await authenticatedFetch(`${API_BASE}/api/feedback`, {
               method: "POST",
-              headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 message_id: meta.assistant_message_id,
-                rating: 5,
-                category: "ACCURACY",
-                feedback_text: "Helpful and accurate answer"
+                rating: "POSITIVE",
+                category: null,
+                comment: "Helpful and accurate answer"
               })
             });
           } catch (e) {
@@ -752,24 +855,10 @@ function renderMessage(role, content, meta = {}) {
 
     const thumbDown = row.querySelector(".btn-thumb-down");
     if (thumbDown) {
-      thumbDown.addEventListener("click", async () => {
-        thumbDown.classList.toggle("active");
-        showToast("Feedback recorded");
-        if (meta && meta.assistant_message_id) {
-          try {
-            await fetch(`${API_BASE}/api/chat/feedback`, {
-              method: "POST",
-              headers: { ...getAuthHeader(), "Content-Type": "application/json" },
-              body: JSON.stringify({
-                message_id: meta.assistant_message_id,
-                rating: 1,
-                category: "ACCURACY",
-                feedback_text: "User indicated issue with answer"
-              })
-            });
-          } catch (e) {
-            console.log("Feedback submit err:", e);
-          }
+      thumbDown.addEventListener("click", () => {
+        if (DOM.feedbackTriageModal) {
+          if (DOM.feedbackTargetMsgId) DOM.feedbackTargetMsgId.value = meta.assistant_message_id || "";
+          DOM.feedbackTriageModal.classList.remove("hidden");
         }
       });
     }
@@ -785,23 +874,19 @@ async function sendChatMessage(queryText) {
   const query = (queryText || DOM.chatTextarea.value).trim();
   if (!query) return;
 
-  // Cleanly abort any prior in-flight request without error
   if (activeChatAbortController) {
     activeChatAbortController.abort();
   }
   activeChatAbortController = new AbortController();
 
-  // Render User Message in stream
   renderMessage("user", query);
   DOM.chatTextarea.value = "";
   DOM.chatTextarea.style.height = "24px";
 
-  // Toggle Send button to Stop Generation button
   DOM.btnSend.disabled = false;
   DOM.btnSend.innerHTML = `<i class="fa-solid fa-square" style="font-size:12px;"></i>`;
   DOM.btnSend.setAttribute("title", "Stop generation");
 
-  // Render Loading Placeholder
   const loadingRow = document.createElement("div");
   loadingRow.className = "message-row assistant-row";
   loadingRow.id = "assistant-loading-indicator";
@@ -813,7 +898,7 @@ async function sendChatMessage(queryText) {
     </div>
     <div class="message-body-wrapper">
       <div class="message-content" style="color:var(--text-muted);font-style:italic;">
-        <i class="fa-solid fa-circle-notch fa-spin"></i> Searching approved banking directives & grounding answer...
+        <i class="fa-solid fa-circle-notch fa-spin"></i> Grounding answer across ${state.activeRegulator === 'ALL' ? 'RBI, SEBI & IRDAI' : state.activeRegulator} directives...
       </div>
     </div>
   `;
@@ -826,12 +911,14 @@ async function sendChatMessage(queryText) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         conversation_id: state.currentConversationId,
-        query: query
+        query: query,
+        regulator_filter: state.activeRegulator === "ALL" ? null : [state.activeRegulator],
+        as_of_date: state.activeAsOfDate || null,
+        requested_depth: state.activeDepth || "concise"
       }),
       signal: activeChatAbortController.signal
     });
 
-    // Remove loading placeholder
     const loader = document.getElementById("assistant-loading-indicator");
     if (loader) loader.remove();
 
@@ -867,7 +954,6 @@ async function sendChatMessage(queryText) {
     if (loader) loader.remove();
 
     if (err.name === "AbortError") {
-      // User cancelled execution cleanly — do not render error bubble
       return;
     }
 
@@ -913,15 +999,17 @@ function renderPromptCards(categoryKey = "all") {
 
   grid.querySelectorAll(".prompt-card").forEach(card => {
     card.addEventListener("click", () => {
-      const text = card.dataset.prompt;
-      DOM.chatTextarea.value = text;
-      DOM.btnSend.disabled = false;
-      sendChatMessage(text);
+      const p = card.getAttribute("data-prompt");
+      if (p) {
+        if (DOM.chatTextarea) DOM.chatTextarea.value = p;
+        if (DOM.btnSend) DOM.btnSend.disabled = false;
+        sendChatMessage(p);
+      }
     });
   });
 }
 
-// ==================== SPEECH-TO-TEXT & TEXT-TO-SPEECH ====================
+// ==================== SPEECH RECOGNITION & TTS ====================
 
 function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -935,16 +1023,16 @@ function initSpeechRecognition() {
   state.speechRecognition.onstart = () => {
     state.isRecordingSpeech = true;
     DOM.btnMic.classList.add("recording");
-    DOM.speechReviewBar.classList.remove("hidden");
-    DOM.speechTranscriptInput.value = "";
+    if (DOM.speechReviewBar) DOM.speechReviewBar.classList.remove("hidden");
+    if (DOM.speechTranscriptInput) DOM.speechTranscriptInput.value = "";
   };
 
   state.speechRecognition.onresult = (event) => {
     let transcript = "";
-    for (let i = 0; i < event.results.length; i++) {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
       transcript += event.results[i][0].transcript;
     }
-    DOM.speechTranscriptInput.value = transcript;
+    if (DOM.speechTranscriptInput) DOM.speechTranscriptInput.value = transcript;
   };
 
   state.speechRecognition.onend = () => {
@@ -995,14 +1083,15 @@ function speakText(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-// ==================== ADMIN KNOWLEDGE BASE ====================
+// ==================== ADMIN KNOWLEDGE BASE & MIS ====================
 
 async function loadAdminDocuments() {
   try {
-    const res = await authenticatedFetch(`${API_BASE}/api/admin/documents`);
+    const reg = DOM.adminFilterRegulator ? DOM.adminFilterRegulator.value : "ALL";
+    const res = await authenticatedFetch(`${API_BASE}/api/admin/documents?regulator=${reg}`);
     if (!res.ok) throw new Error("Failed to load documents");
     const docs = await res.json();
-    DOM.kbDocCount.textContent = docs.length;
+    if (DOM.kbDocCount) DOM.kbDocCount.textContent = docs.length;
     renderAdminDocumentsTable(docs);
   } catch (err) {
     console.error(err);
@@ -1010,29 +1099,27 @@ async function loadAdminDocuments() {
 }
 
 function renderAdminDocumentsTable(docs) {
+  if (!DOM.kbDocumentsTbody) return;
   DOM.kbDocumentsTbody.innerHTML = "";
   if (docs.length === 0) {
-    DOM.kbDocumentsTbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:16px;">No documents in knowledge base.</td></tr>`;
+    DOM.kbDocumentsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:16px;">No documents found for selected regulator.</td></tr>`;
     return;
   }
 
   docs.forEach(d => {
     const tr = document.createElement("tr");
-    const ocrBadge = d.is_ocr
-      ? `<span class="badge-active" style="background:rgba(227,160,24,0.15);color:var(--badge-amber);"><i class="fa-solid fa-eye"></i> OCR (${(d.ocr_confidence*100).toFixed(0)}%)</span>`
-      : `<span class="badge-active"><i class="fa-solid fa-file-lines"></i> Native</span>`;
+    const statusBadge = d.status === "superseded"
+      ? `<span class="badge-secondary" style="background:rgba(239,68,68,0.15);color:#ef4444;">SUPERSEDED</span>`
+      : `<span class="badge-active">ACTIVE</span>`;
 
-    const ambInfo = d.ocr_ambiguity_notes
-      ? `<span style="color:var(--badge-amber);font-size:11px;" title="${escapeHtml(d.ocr_ambiguity_notes)}"><i class="fa-solid fa-triangle-exclamation"></i> Flagged</span>`
-      : `<span style="color:var(--text-muted);font-size:11px;">Clean</span>`;
+    const effDates = `From: ${d.effective_from || 'N/A'}${d.effective_until ? `<br>Until: ${d.effective_until}` : ''}`;
 
     tr.innerHTML = `
-      <td><strong>${escapeHtml(d.title)}</strong><br><span style="font-size:10px;color:var(--text-muted);">${escapeHtml(d.source)}</span></td>
+      <td><strong>${escapeHtml(d.title)}</strong><br><span class="badge-secondary" style="font-size:10px;">${escapeHtml(d.regulator || d.source)}</span></td>
       <td><code>${escapeHtml(d.notification_number || 'N/A')}</code></td>
-      <td>${escapeHtml(d.document_type.toUpperCase())}</td>
-      <td>${d.page_count}</td>
+      <td>${statusBadge}</td>
+      <td style="font-size:11px;">${effDates}</td>
       <td>${d.chunk_count}</td>
-      <td>${ocrBadge}<br>${ambInfo}</td>
       <td>
         <button class="btn btn-danger-chatgpt btn-sm btn-delete-doc" data-id="${d.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>
       </td>
@@ -1043,6 +1130,82 @@ function renderAdminDocumentsTable(docs) {
   });
 }
 
+async function loadIngestionMIS() {
+  try {
+    const res = await authenticatedFetch(`${API_BASE}/api/admin/mis/ingestion`);
+    if (!res.ok) return;
+    const mis = await res.json();
+
+    if (DOM.misMetricsSummary) {
+      DOM.misMetricsSummary.innerHTML = `
+        <div class="mis-card">
+          <div class="mis-card-value">${mis.total_documents}</div>
+          <div class="mis-card-label">Total Documents</div>
+        </div>
+        <div class="mis-card">
+          <div class="mis-card-value" style="color:#10b981;">${mis.active_documents}</div>
+          <div class="mis-card-label">Active Directives</div>
+        </div>
+        <div class="mis-card">
+          <div class="mis-card-value" style="color:#f59e0b;">${mis.superseded_documents}</div>
+          <div class="mis-card-label">Superseded</div>
+        </div>
+        <div class="mis-card">
+          <div class="mis-card-value" style="color:#6366f1;">${mis.total_chunks}</div>
+          <div class="mis-card-label">Indexed Chunks</div>
+        </div>
+      `;
+    }
+
+    if (DOM.misRegulatorSummary) {
+      const regCards = Object.entries(mis.by_regulator).map(([k, v]) => `
+        <div class="mis-card">
+          <div class="mis-card-value">${v}</div>
+          <div class="mis-card-label">${k} Directives</div>
+        </div>
+      `).join("");
+
+      DOM.misRegulatorSummary.innerHTML = `
+        <h4 style="margin-bottom:12px;font-size:13px;color:var(--text-secondary);">Directives by Regulatory Authority:</h4>
+        <div class="mis-metrics-grid">${regCards}</div>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load Ingestion MIS:", err);
+  }
+}
+
+async function loadConsumptionMIS() {
+  try {
+    const res = await authenticatedFetch(`${API_BASE}/api/admin/mis/consumption`);
+    if (!res.ok) return;
+    const cons = await res.json();
+
+    if (DOM.misConsumptionSummary) {
+      DOM.misConsumptionSummary.innerHTML = `
+        <div class="mis-card">
+          <div class="mis-card-value">${cons.total_queries}</div>
+          <div class="mis-card-label">Total Queries</div>
+        </div>
+        <div class="mis-card">
+          <div class="mis-card-value" style="color:#10b981;">${cons.cache_hit_rate_pct}%</div>
+          <div class="mis-card-label">Cache Avoidance Rate</div>
+        </div>
+        <div class="mis-card">
+          <div class="mis-card-value">${cons.total_tokens_input + cons.total_tokens_output}</div>
+          <div class="mis-card-label">Total Tokens Tracked</div>
+        </div>
+        <div class="mis-card">
+          <div class="mis-card-value" style="color:#38bdf8;">${cons.p50_latency_ms}ms</div>
+          <div class="mis-card-label">P50 Latency</div>
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error("Failed to load Consumption MIS:", err);
+  }
+}
+
 async function uploadDocument() {
   if (!state.selectedUploadFile) return;
 
@@ -1050,6 +1213,7 @@ async function uploadDocument() {
   formData.append("file", state.selectedUploadFile);
   if (DOM.docTitleInput.value.trim()) formData.append("title", DOM.docTitleInput.value.trim());
   if (DOM.docNotifInput.value.trim()) formData.append("notification_number", DOM.docNotifInput.value.trim());
+  formData.append("regulator", DOM.docSourceSelect.value);
   formData.append("source", DOM.docSourceSelect.value);
   if (DOM.docPubdateInput.value) formData.append("publication_date", DOM.docPubdateInput.value);
 
@@ -1065,11 +1229,12 @@ async function uploadDocument() {
       const err = await res.json();
       throw new Error(err.detail || "Upload failed");
     }
-    showToast("Document ingested & OCR processed successfully!");
+    showToast("Document ingested & indexed across vector store!");
     DOM.kbUploadForm.reset();
     DOM.kbUploadForm.classList.add("hidden");
     state.selectedUploadFile = null;
     await loadAdminDocuments();
+    await loadIngestionMIS();
   } catch (err) {
     alert(err.message);
   } finally {
@@ -1087,6 +1252,7 @@ async function deleteDocument(docId) {
       if (res.ok) {
         showToast("Document deleted");
         await loadAdminDocuments();
+        await loadIngestionMIS();
       }
     } catch (err) {
       console.error(err);
@@ -1149,55 +1315,120 @@ function initEventListeners() {
     });
   }
 
-  // Model Selector Dropdown
-  if (DOM.btnModelSelector) {
-    DOM.btnModelSelector.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (DOM.modelDropdownMenu) DOM.modelDropdownMenu.classList.toggle("hidden");
-    });
-  }
-
-  document.addEventListener("click", (e) => {
-    if (DOM.modelDropdownMenu && !DOM.modelDropdownMenu.contains(e.target) && e.target !== DOM.btnModelSelector) {
-      DOM.modelDropdownMenu.classList.add("hidden");
-    }
-  });
-
-  // New Chat
+  // New Chat Button
   if (DOM.btnNewChat) {
     DOM.btnNewChat.addEventListener("click", () => {
-      if (activeChatAbortController) {
-        activeChatAbortController.abort();
-        activeChatAbortController = null;
-      }
       state.currentConversationId = null;
-      if (DOM.messagesStream && DOM.welcomeHero) {
-        DOM.messagesStream.innerHTML = "";
-        DOM.messagesStream.appendChild(DOM.welcomeHero);
-        DOM.welcomeHero.classList.remove("hidden");
-      }
       renderConversationList(state.conversations);
+      DOM.messagesStream.innerHTML = "";
+      DOM.messagesStream.appendChild(DOM.welcomeHero);
+      DOM.welcomeHero.classList.remove("hidden");
+      if (DOM.chatTextarea) DOM.chatTextarea.focus();
     });
   }
 
-  // Explore KB / Directives shortcut
-  if (DOM.btnExploreKb) {
-    DOM.btnExploreKb.addEventListener("click", () => {
-      sendChatMessage("List all approved RBI Master Directions and IDFC FIRST Bank policy circulars in the knowledge base");
+  // Model Selector Dropdown
+  if (DOM.btnModelSelector && DOM.modelDropdownMenu) {
+    DOM.btnModelSelector.addEventListener("click", (e) => {
+      e.stopPropagation();
+      DOM.modelDropdownMenu.classList.toggle("hidden");
     });
   }
 
-  // Suggestion Category Filter Tabs
-  document.querySelectorAll(".cat-tab").forEach(tab => {
+  // Prompt Category Filter Tabs
+  document.querySelectorAll(".prompt-category-tabs .cat-tab").forEach(tab => {
     tab.addEventListener("click", () => {
-      document.querySelectorAll(".cat-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".prompt-category-tabs .cat-tab").forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
-      renderPromptCards(tab.dataset.cat);
+      const cat = tab.getAttribute("data-cat");
+      renderPromptCards(cat);
     });
   });
 
-  // Initial render of prompt cards
   renderPromptCards("all");
+
+  // Scoped Query Filter Chips (Regulator)
+  if (DOM.regulatorChips) {
+    DOM.regulatorChips.querySelectorAll(".scope-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        DOM.regulatorChips.querySelectorAll(".scope-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        state.activeRegulator = chip.getAttribute("data-reg") || "ALL";
+        showToast(`Regulator scope: ${state.activeRegulator}`);
+      });
+    });
+  }
+
+  // Timeline Scope
+  if (DOM.asOfDateSelect) {
+    DOM.asOfDateSelect.addEventListener("change", (e) => {
+      state.activeAsOfDate = e.target.value;
+      showToast(state.activeAsOfDate ? `Historical rules as of ${state.activeAsOfDate}` : "Current active regulations");
+    });
+  }
+
+  // Depth Scope
+  if (DOM.requestedDepthSelect) {
+    DOM.requestedDepthSelect.addEventListener("change", (e) => {
+      state.activeDepth = e.target.value;
+    });
+  }
+
+  // Feedback Triage Form Submission (PRD Section 5.4 8-Category Taxonomy)
+  if (DOM.feedbackTriageForm) {
+    DOM.feedbackTriageForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msgId = DOM.feedbackTargetMsgId ? DOM.feedbackTargetMsgId.value : null;
+      const cat = DOM.feedbackCategorySelect ? DOM.feedbackCategorySelect.value : "INCORRECT_FACT";
+      const comment = DOM.feedbackCommentInput ? DOM.feedbackCommentInput.value.trim() : "";
+
+      try {
+        const res = await authenticatedFetch(`${API_BASE}/api/feedback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message_id: msgId,
+            rating: "NEGATIVE",
+            category: cat,
+            comment: comment
+          })
+        });
+
+        if (res.ok) {
+          showToast("Feedback submitted for regulatory review");
+          if (DOM.feedbackTriageModal) DOM.feedbackTriageModal.classList.add("hidden");
+          if (DOM.feedbackCommentInput) DOM.feedbackCommentInput.value = "";
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
+
+  // Admin Tab Switcher
+  document.querySelectorAll(".admin-tab-btn").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".admin-tab-btn").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".admin-tab-content").forEach(c => c.classList.add("hidden"));
+
+      tab.classList.add("active");
+      const targetId = `tab-content-${tab.getAttribute("data-tab")}`;
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) targetEl.classList.remove("hidden");
+
+      if (tab.getAttribute("data-tab") === "mis-ingestion") {
+        loadIngestionMIS();
+      } else if (tab.getAttribute("data-tab") === "mis-consumption") {
+        loadConsumptionMIS();
+      } else if (tab.getAttribute("data-tab") === "catalogue") {
+        loadAdminDocuments();
+      }
+    });
+  });
+
+  if (DOM.adminFilterRegulator) {
+    DOM.adminFilterRegulator.addEventListener("change", () => loadAdminDocuments());
+  }
 
   // Conversation Search
   if (DOM.conversationSearch) {
@@ -1232,7 +1463,6 @@ function initEventListeners() {
       }
     });
 
-    // Auto-resize textarea & enable send button
     DOM.chatTextarea.addEventListener("input", () => {
       DOM.chatTextarea.style.height = "auto";
       DOM.chatTextarea.style.height = Math.min(DOM.chatTextarea.scrollHeight, 180) + "px";
@@ -1328,6 +1558,12 @@ function initEventListeners() {
   if (DOM.btnQuickAdmin) {
     DOM.btnQuickAdmin.addEventListener("click", () => {
       loginUser("admin@idfcbank.com", "Admin@12345");
+    });
+  }
+
+  if (DOM.btnQuickDevesh) {
+    DOM.btnQuickDevesh.addEventListener("click", () => {
+      googleLogin("devesh.pandey1405@gmail.com", "devesh pandey1405");
     });
   }
 

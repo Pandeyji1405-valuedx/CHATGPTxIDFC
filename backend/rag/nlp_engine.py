@@ -212,13 +212,13 @@ class NLPEngine:
 
         # 6. Pure Greetings & Slang (when no domain question is asked)
         is_greeting = bool(re.search(
-            r"\b(hi+|hello+|hey+|heyy+|heya|hola|greetings|namaste|namaskar|pranam|good\s+(morning|afternoon|evening|day)|kya\s+haal(\s+hai)?|kaise\s+ho|kaisa\s+hai|sab\s+theek|kem\s+cho|kemon\s+acho|yo|wassup|what'?s\s+up|sup|bro|bhai|yaar|buddy|dude|suno|arre\s+bhai|oye)\b",
+            r"\b(h+e+l+l*o+|h+e+l+o+|h+e+y+|h+i+|h+e+y+a+|h+o+l+a+|greetings|namaste+|namaskar|pranam|good\s+(morning|afternoon|evening|day|night)|kya\s+haal(\s+hai)?|kaise\s+ho|kaisa\s+hai|sab\s+theek|kem\s+cho|kemon\s+acho|yo+|wassup|what'?s\s+up|sup|bro+|bhai+|yaar|buddy|dude|suno|arre\s+bhai|oye|hlo+)\b",
             lower
         ))
 
         if is_greeting and not has_domain_keyword:
             # Differentiate Hinglish vs English greetings
-            if re.search(r"\b(namaste|namaskar|pranam|kya\s+haal|kaise\s+ho|kaisa\s+hai|sab\s+theek|bhai|arre|suno)\b", lower):
+            if re.search(r"\b(namaste+|namaskar|pranam|kya\s+haal|kaise\s+ho|kaisa\s+hai|sab\s+theek|bhai+|arre|suno)\b", lower):
                 return {
                     "is_chitchat": True,
                     "response": "Namaste! Main aapki RBI Master Directions, banking rules aur IDFC FIRST Bank policies se related queries mein kaise help kar sakta hoon?"
@@ -230,7 +230,7 @@ class NLPEngine:
 
         # 7. Greeting prefix attached to a real query (e.g. "Hi, what is NEFT limit?")
         greeting_prefix_match = re.match(
-            r"^(hi+|hello+|hey+|heyy+|namaste|namaskar|good\s+(morning|afternoon|evening)|bro|bhai|yo)[\s,!.:;-]+(.*)$",
+            r"^(h+e+l+l*o+|h+e+l+o+|h+e+y+|h+i+|namaste+|namaskar|good\s+(morning|afternoon|evening|day)|bro+|bhai+|yo+|hlo+)[\s,!.:;-]+(.*)$",
             clean,
             re.IGNORECASE
         )
@@ -549,7 +549,52 @@ class NLPEngine:
         if re.search(r"\b(how\s+to|steps?\s+to|process|procedure|method|how\s+does.*work|how\s+can\s+i|how\s+the.*can\s+be|workflow|complaint\s+filing|how\s+to\s+file|mechanism|how\s+to\s+reload|how.*reloaded|how.*recharged?)\b", q):
             return {"intent": "PROCEDURAL_HOWTO"}
 
+        # Check comparison intent
+        if re.search(r"\b(COMPARE|DIFFERENCE BETWEEN|VS|VERSUS|COMPARISON)\b", query, re.IGNORECASE):
+            return {"intent": "COMPARISON"}
+
         return {"intent": "GENERAL_FACTUAL"}
+
+    def extract_temporal_and_regulator_scope(self, query: str) -> Dict[str, Any]:
+        """
+        Extracts explicit regulator mentions and historical temporal bounds (e.g. 'in 2021', 'as of 2018').
+        """
+        regulators = []
+        query_upper = query.upper()
+
+        if re.search(r"\b(SEBI|SECURITIES AND EXCHANGE BOARD|LODR|INSIDER TRADING)\b", query_upper):
+            regulators.append("SEBI")
+        if re.search(r"\b(IRDAI|INSURANCE REGULATORY|POLICYHOLDER|INSURER)\b", query_upper):
+            regulators.append("IRDAI")
+        if re.search(r"\b(RBI|RESERVE BANK|BANKING OMBUDSMAN|V-CIP|NEFT|RTGS|DIGITAL LENDING)\b", query_upper):
+            regulators.append("RBI")
+        if re.search(r"\b(INTERNAL|IDFC POLICY|BANK POLICY|SOP)\b", query_upper):
+            regulators.append("INTERNAL")
+
+        # Temporal detection
+        as_of_date = None
+        year_match = re.search(r"\b(?:IN|AS OF|BEFORE|DURING|UNDER THE)\s+(20\d\d)\b", query, re.IGNORECASE)
+        if year_match:
+            year = year_match.group(1)
+            as_of_date = f"{year}-12-31"
+        else:
+            # Check for date formats like 2021-04-01 or 15/08/2022
+            iso_match = re.search(r"\b(20\d\d-\d\d-\d\d)\b", query)
+            if iso_match:
+                as_of_date = iso_match.group(1)
+
+        # Depth detection
+        requested_depth = "concise"
+        if re.search(r"\b(COMPARE|COMPARISON|VERSUS|VS|DIFFERENCE)\b", query, re.IGNORECASE):
+            requested_depth = "comparison"
+        elif re.search(r"\b(DETAILED|EXPLAIN IN DETAIL|COMPREHENSIVE|ALL REQUIREMENTS)\b", query, re.IGNORECASE):
+            requested_depth = "detailed"
+
+        return {
+            "detected_regulators": regulators or ["ALL"],
+            "as_of_date": as_of_date,
+            "requested_depth": requested_depth
+        }
 
     def process_query(
         self,
@@ -563,6 +608,7 @@ class NLPEngine:
         3. Coreference / pronoun resolution against conversation history.
         4. Entity extraction.
         5. Query intent classification for precise answer synthesis.
+        6. Extract temporal compliance dates and regulator scopes.
         """
         conversation_history = conversation_history or []
         original_query = query.strip()
@@ -578,7 +624,10 @@ class NLPEngine:
                 "clarification_needed": False,
                 "is_chitchat": True,
                 "chitchat_response": chitchat["response"],
-                "query_intent": "CHITCHAT"
+                "query_intent": "CHITCHAT",
+                "detected_regulators": ["ALL"],
+                "as_of_date": None,
+                "requested_depth": "concise"
             }
 
         target_query = chitchat["cleaned_query"] if (chitchat and "cleaned_query" in chitchat) else original_query
@@ -599,6 +648,9 @@ class NLPEngine:
         # Step 5: Semantic Intent Analysis
         intent_info = self.analyze_query_intent(resolved_query)
 
+        # Step 6: Temporal & Regulator Scope Analysis
+        scope_info = self.extract_temporal_and_regulator_scope(resolved_query)
+
         return {
             "original_query": original_query,
             "normalized_query": resolved_query,
@@ -607,8 +659,12 @@ class NLPEngine:
             "clarification_needed": clarification_needed,
             "is_chitchat": False,
             "chitchat_response": None,
-            "query_intent": intent_info["intent"]
+            "query_intent": intent_info["intent"],
+            "detected_regulators": scope_info["detected_regulators"],
+            "as_of_date": scope_info["as_of_date"],
+            "requested_depth": scope_info["requested_depth"]
         }
 
 nlp_engine = NLPEngine()
+
 

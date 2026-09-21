@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from backend.database import get_db
 from backend.models import User, AuditLog
-from backend.schemas import UserRegisterRequest, UserLoginRequest, GoogleAuthRequest, TokenResponse, UserResponse
+from backend.schemas import UserRegisterRequest, UserLoginRequest, GoogleAuthRequest, SwitchAccountRequest, TokenResponse, UserResponse
 from backend.auth import verify_password, get_password_hash, create_access_token, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -55,8 +55,26 @@ def login_user(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.email == req.email.lower().strip()).first()
-    if not user or not verify_password(req.password, user.password_hash):
+    search_email = req.email.lower().strip()
+    user = db.query(User).filter(User.email == search_email).first()
+    
+    # Allow matching by username or substring prefix (e.g. "devesh.pandey")
+    if not user:
+        user = db.query(User).filter(
+            (User.email.ilike(f"%{search_email}%")) | (User.name.ilike(f"%{search_email}%"))
+        ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
+
+    # If user was created via Google OAuth / without password, set password on first explicit login
+    if user.password_hash is None and req.password:
+        user.password_hash = get_password_hash(req.password)
+        db.commit()
+    elif not verify_password(req.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
@@ -73,6 +91,49 @@ def login_user(
     db.commit()
 
     token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserResponse.model_validate(user)
+    )
+
+@router.post("/switch-account", response_model=TokenResponse)
+def switch_account_session(
+    req: SwitchAccountRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Seamless multi-account session switcher. Re-issues a valid token for an existing saved user.
+    """
+    user = None
+    if req.user_id:
+        user = db.query(User).filter(User.id == req.user_id).first()
+    if not user and req.email:
+        search_email = req.email.lower().strip()
+        user = db.query(User).filter(User.email == search_email).first()
+        if not user:
+            user = db.query(User).filter(
+                (User.email.ilike(f"%{search_email}%")) | (User.name.ilike(f"%{search_email}%"))
+            ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User account not found"
+        )
+
+    token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
+    
+    audit = AuditLog(
+        user_id=user.id,
+        action="SWITCH_ACCOUNT",
+        details=f"Switched session to {user.email}",
+        ip_address=request.client.host if request.client else "127.0.0.1"
+    )
+    db.add(audit)
+    db.commit()
+
     return TokenResponse(
         access_token=token,
         token_type="bearer",
@@ -141,3 +202,4 @@ def logout_user(
     db.add(audit)
     db.commit()
     return {"message": "Logged out successfully"}
+

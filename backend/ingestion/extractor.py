@@ -140,6 +140,10 @@ class DocumentExtractor:
 
         result["checksum"] = checksum
         result["filename"] = filename
+        result["full_text"] = "\n\n".join(p.get("text", "") for p in result.get("pages", []))
+        result["title"] = filename.rsplit(".", 1)[0].replace("_", " ")
         return result
+
+    extract = extract_document
 
 document_extractor = DocumentExtractor()

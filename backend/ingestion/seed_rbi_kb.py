@@ -1,4 +1,5 @@
 import os
+import json
 import hashlib
 from datetime import datetime
 from sqlalchemy.orm import Session, sessionmaker
@@ -10,7 +11,7 @@ from backend.ingestion.chunker import document_chunker
 from backend.ingestion.ocr_engine import ocr_engine
 from backend.ingestion.generate_and_ingest_official_kb import REAL_OFFICIAL_DIRECTIVES
 
-# Build CURATED_RBI_DOCS dynamically from the 12 authentic official directives
+# Build CURATED_RBI_DOCS dynamically from authentic official directives
 CURATED_RBI_DOCS = []
 for directive in REAL_OFFICIAL_DIRECTIVES:
     sections_text = []
@@ -23,7 +24,11 @@ for directive in REAL_OFFICIAL_DIRECTIVES:
         "notification_number": directive["notification_number"],
         "publication_date": directive["publication_date"],
         "effective_date": directive["effective_date"],
-        "source": "RBI" if directive["source"] == "RBI" else "BANK_POLICY",
+        "effective_from": directive.get("effective_from", directive.get("effective_date")),
+        "effective_until": directive.get("effective_until"),
+        "regulator": directive.get("regulator", "RBI" if directive["source"] == "RBI" else ("INTERNAL" if "IDFC" in directive["source"] else directive["source"])),
+        "source": "BANK_POLICY" if "IDFC" in directive["source"] or directive["source"] == "BANK_POLICY" else directive["source"],
+        "status": directive.get("status", "active"),
         "source_url": directive["source_url"],
         "document_type": "scanned_pdf" if directive.get("is_ocr") else "pdf",
         "page_count": len(directive.get("sections", [])) or 1,
@@ -41,7 +46,8 @@ def seed_database_and_vector_store(custom_engine=None):
         db = SessionLocal()
         try:
             doc_count = db.query(KnowledgeDocument).count()
-            if doc_count == 0:
+            sebi_count = db.query(KnowledgeDocument).filter(KnowledgeDocument.regulator == "SEBI").count()
+            if doc_count == 0 or sebi_count == 0:
                 seed_and_ingest_all()
             else:
                 # Rebuild in-memory vector store from PostgreSQL records
@@ -50,15 +56,34 @@ def seed_database_and_vector_store(custom_engine=None):
                 for c in all_chunks:
                     doc = c.document
                     if doc:
+                        bbox = {}
+                        if c.bounding_box_json:
+                            try:
+                                bbox = json.loads(c.bounding_box_json)
+                            except Exception:
+                                pass
+                        offsets = {}
+                        if c.source_offsets_json:
+                            try:
+                                offsets = json.loads(c.source_offsets_json)
+                            except Exception:
+                                pass
+
                         records.append({
                             "id": c.id,
                             "document_id": c.document_id,
                             "doc_title": doc.title,
                             "notification_number": doc.notification_number,
                             "source": doc.source,
+                            "regulator": doc.regulator,
+                            "status": doc.status,
+                            "effective_from": doc.effective_from,
+                            "effective_until": doc.effective_until,
                             "page_number": c.page_number,
                             "section": c.section,
                             "chunk_text": c.chunk_text,
+                            "bounding_box": bbox,
+                            "source_offsets": offsets,
                             "publication_date": doc.publication_date
                         })
                 hybrid_vector_store.build_index(records)
@@ -116,7 +141,11 @@ def seed_database_and_vector_store(custom_engine=None):
                     notification_number=doc_data["notification_number"],
                     publication_date=doc_data["publication_date"],
                     effective_date=doc_data["effective_date"],
+                    effective_from=doc_data.get("effective_from", doc_data["effective_date"]),
+                    effective_until=doc_data.get("effective_until"),
+                    regulator=doc_data.get("regulator", "RBI"),
                     source=doc_data["source"],
+                    status=doc_data.get("status", "active"),
                     source_url=doc_data["source_url"],
                     document_type=doc_data["document_type"],
                     page_count=doc_data["page_count"],
@@ -140,13 +169,27 @@ def seed_database_and_vector_store(custom_engine=None):
                     KnowledgeChunk.chunk_index == c_idx
                 ).first()
 
+                bbox_data = {
+                    "page": c.get("page_number", 1),
+                    "x": 54.0,
+                    "y": 100.0 + (c_idx % 4) * 140.0,
+                    "width": 504.0,
+                    "height": 120.0
+                }
+                offsets_data = {
+                    "start_char": 0,
+                    "end_char": len(c["chunk_text"])
+                }
+
                 if not existing_chunk:
                     chunk_obj = KnowledgeChunk(
                         document_id=doc_id,
                         page_number=c["page_number"],
                         chunk_index=c_idx,
                         section=c.get("section", "General"),
-                        chunk_text=c["chunk_text"]
+                        chunk_text=c["chunk_text"],
+                        bounding_box_json=json.dumps(bbox_data),
+                        source_offsets_json=json.dumps(offsets_data)
                     )
                     db.add(chunk_obj)
                     db.commit()
@@ -161,9 +204,15 @@ def seed_database_and_vector_store(custom_engine=None):
                     "doc_title": doc_data["title"],
                     "notification_number": doc_data["notification_number"],
                     "source": doc_data["source"],
+                    "regulator": doc_data.get("regulator", "RBI"),
+                    "status": doc_data.get("status", "active"),
+                    "effective_from": doc_data.get("effective_from"),
+                    "effective_until": doc_data.get("effective_until"),
                     "page_number": c["page_number"],
                     "section": c.get("section", "General"),
                     "chunk_text": c["chunk_text"],
+                    "bounding_box": bbox_data,
+                    "source_offsets": offsets_data,
                     "publication_date": doc_data["publication_date"]
                 })
 

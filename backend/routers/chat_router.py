@@ -40,8 +40,8 @@ def handle_chat_query(
     """
     Core RAG Chat Endpoint:
     - Normalizes user query & resolves conversational references/pronouns.
-    - Searches Conversation Database (Layer 1) & Approved Banking Knowledge Base (Layer 2).
-    - Grounded Answer Synthesis & Fact Validation.
+    - Searches Conversation Database (Layer 1) & Approved Multi-Regulator Knowledge Base (Layer 2).
+    - Grounded Answer Synthesis, Token Budgeting, Response Composition & Fact Validation.
     - Stores messages, entities, source citations, and OCR ambiguity flags.
     - Zero-internet policy strictly enforced.
     """
@@ -63,18 +63,26 @@ def handle_chat_query(
     if not conversation:
         conversation = Conversation(
             user_id=current_user.id,
-            title="New Conversation"
+            tenant_id=getattr(current_user, "tenant_id", "default_tenant"),
+            title="New Conversation",
+            regulator_scope=",".join(req.regulator_filter) if req.regulator_filter else "ALL",
+            as_of_date_scope=req.as_of_date
         )
         db.add(conversation)
         db.commit()
         db.refresh(conversation)
 
-    # 2. Run 2-Layer RAG Pipeline
+    # 2. Run Multi-Regulator 2-Layer RAG Pipeline with Token Budgeting & Response Composer
     rag_result = rag_engine.process_query(
         db=db,
         user_id=current_user.id,
         conversation_id=conversation.id,
-        raw_query=raw_query
+        raw_query=raw_query,
+        regulator_filter=req.regulator_filter,
+        as_of_date=req.as_of_date,
+        department_filter=req.department_filter,
+        requested_depth=req.requested_depth or "concise",
+        tenant_id=getattr(current_user, "tenant_id", "default_tenant")
     )
 
     # 3. Update Conversation Title if it is still default
@@ -88,6 +96,7 @@ def handle_chat_query(
     user_msg = Message(
         conversation_id=conversation.id,
         user_id=current_user.id,
+        tenant_id=getattr(current_user, "tenant_id", "default_tenant"),
         role="user",
         original_content=rag_result["original_query"],
         normalized_content=rag_result["normalized_query"]
@@ -110,6 +119,7 @@ def handle_chat_query(
     assistant_msg = Message(
         conversation_id=conversation.id,
         user_id=current_user.id,
+        tenant_id=getattr(current_user, "tenant_id", "default_tenant"),
         role="assistant",
         original_content=rag_result["answer"],
         normalized_content=rag_result["answer"]
@@ -118,6 +128,7 @@ def handle_chat_query(
     db.commit()
     db.refresh(assistant_msg)
 
+    tokens_dict = rag_result.get("tokens_used", {})
     response_record = Response(
         message_id=assistant_msg.id,
         answer=rag_result["answer"],
@@ -125,17 +136,21 @@ def handle_chat_query(
         confidence=rag_result["confidence"],
         citations_json=json.dumps(rag_result["citations"]),
         ambiguity_flags_json=json.dumps(rag_result["ambiguity_flags"]),
-        validation_status="VALIDATED" if rag_result["source_type"] != "NO_SUPPORTED_SOURCE" else "FALLBACK"
+        validation_status="VALIDATED" if rag_result["source_type"] != "NO_SUPPORTED_SOURCE" else "FALLBACK",
+        query_trace_id=rag_result.get("query_trace_id"),
+        tokens_input=tokens_dict.get("tokens_input", 0),
+        tokens_output=tokens_dict.get("tokens_output", 0)
     )
     db.add(response_record)
 
     # Audit log
     audit = AuditLog(
         user_id=current_user.id,
+        tenant_id=getattr(current_user, "tenant_id", "default_tenant"),
         action="QUERY",
         resource_type="conversation",
         resource_id=conversation.id,
-        details=f"Source: {rag_result['source_type']}, Confidence: {rag_result['confidence']}",
+        details=f"Source: {rag_result['source_type']}, Confidence: {rag_result['confidence']}, Regulators: {rag_result.get('regulator_scope')}",
         ip_address=request.client.host if request.client else "127.0.0.1"
     )
     db.add(audit)
@@ -149,15 +164,19 @@ def handle_chat_query(
         conversation_title=conversation.title,
         user_message_id=user_msg.id,
         assistant_message_id=assistant_msg.id,
+        query_trace_id=rag_result.get("query_trace_id"),
         original_query=rag_result["original_query"],
         normalized_query=rag_result["normalized_query"],
         resolved_entities=rag_result["resolved_entities"],
+        regulator_scope=rag_result.get("regulator_scope", "ALL"),
+        as_of_date_applied=rag_result.get("as_of_date_applied"),
         answer=rag_result["answer"],
         source_type=rag_result["source_type"],
         confidence=rag_result["confidence"],
         citations=[CitationItem(**c) for c in rag_result["citations"]],
         ambiguity_flags=[AmbiguityFlag(**a) for a in rag_result["ambiguity_flags"]],
-        clarification_needed=rag_result["clarification_needed"]
+        clarification_needed=rag_result["clarification_needed"],
+        tokens_used=tokens_dict
     )
 
 @router.post("/feedback", response_model=ChatFeedbackResponse)
@@ -181,6 +200,7 @@ def submit_chat_feedback(
     # Save to AuditLog
     audit = AuditLog(
         user_id=current_user.id,
+        tenant_id=getattr(current_user, "tenant_id", "default_tenant"),
         action="FEEDBACK",
         resource_type="message",
         resource_id=req.message_id,

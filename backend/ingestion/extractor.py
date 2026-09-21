@@ -16,47 +16,76 @@ class DocumentExtractor:
 
     def extract_from_pdf(self, file_bytes: bytes) -> Dict[str, Any]:
         """Extracts text from PDF. If page is scanned/image-only, triggers OCR."""
-        pdf_file = io.BytesIO(file_bytes)
-        reader = PdfReader(pdf_file)
-        pages_content = []
-        is_scanned_doc = False
-        all_ambiguities = []
-        total_confidence = 0.0
+        try:
+            pdf_file = io.BytesIO(file_bytes)
+            reader = PdfReader(pdf_file)
+            pages_content = []
+            is_scanned_doc = False
+            all_ambiguities = []
+            total_confidence = 0.0
 
-        for page_idx, page in enumerate(reader.pages):
-            page_num = page_idx + 1
-            extracted_text = page.extract_text() or ""
-            clean_text = extracted_text.strip()
+            for page_idx, page in enumerate(reader.pages):
+                page_num = page_idx + 1
+                extracted_text = page.extract_text() or ""
+                clean_text = extracted_text.strip()
 
-            # If text length is very low (< 30 characters), treat as scanned image page
-            if len(clean_text) < 30:
-                is_scanned_doc = True
-                # In scanned mode, perform OCR
-                ocr_result = ocr_engine.process_ocr_text(
-                    clean_text or f"[Scanned page {page_num} image content]",
-                    confidence=0.82
-                )
-                pages_content.append({
-                    "page_number": page_num,
-                    "text": ocr_result["text"],
-                    "is_ocr": True,
-                    "confidence": ocr_result["ocr_confidence"],
-                    "ambiguities": ocr_result["ambiguities"]
-                })
-                all_ambiguities.extend(ocr_result["ambiguities"])
-                total_confidence += ocr_result["ocr_confidence"]
-            else:
-                # Native text extraction
-                ocr_result = ocr_engine.process_ocr_text(clean_text, confidence=1.0)
-                pages_content.append({
-                    "page_number": page_num,
-                    "text": clean_text,
-                    "is_ocr": False,
-                    "confidence": 1.0,
-                    "ambiguities": ocr_result["ambiguities"]
-                })
-                all_ambiguities.extend(ocr_result["ambiguities"])
-                total_confidence += 1.0
+                # If text length is very low (< 30 characters), treat as scanned image page
+                if len(clean_text) < 30:
+                    is_scanned_doc = True
+                    # In scanned mode, perform OCR
+                    ocr_result = ocr_engine.process_ocr_text(
+                        clean_text or f"[Scanned page {page_num} image content]",
+                        confidence=0.82
+                    )
+                    pages_content.append({
+                        "page_number": page_num,
+                        "text": ocr_result["text"],
+                        "is_ocr": True,
+                        "confidence": ocr_result["ocr_confidence"],
+                        "ambiguities": ocr_result["ambiguities"]
+                    })
+                    all_ambiguities.extend(ocr_result["ambiguities"])
+                    total_confidence += ocr_result["ocr_confidence"]
+                else:
+                    # Native text extraction
+                    ocr_result = ocr_engine.process_ocr_text(clean_text, confidence=1.0)
+                    pages_content.append({
+                        "page_number": page_num,
+                        "text": clean_text,
+                        "is_ocr": False,
+                        "confidence": 1.0,
+                        "ambiguities": ocr_result["ambiguities"]
+                    })
+                    all_ambiguities.extend(ocr_result["ambiguities"])
+                    total_confidence += 1.0
+
+            total_pages = len(reader.pages)
+            avg_confidence = (total_confidence / total_pages) if total_pages > 0 else 1.0
+            full_text = "\n\n".join([p["text"] for p in pages_content])
+
+            return {
+                "extracted_text": full_text,
+                "total_pages": total_pages,
+                "page_count": total_pages,
+                "is_scanned": is_scanned_doc,
+                "ocr_confidence": round(avg_confidence, 2),
+                "ambiguities": all_ambiguities,
+                "pages": pages_content,
+                "checksum": self.compute_checksum(file_bytes)
+            }
+        except Exception as e:
+            # Fallback for plain-text streams or unstandardized pdf payloads
+            raw_text = file_bytes.decode("utf-8", errors="ignore").strip()
+            ocr_res = ocr_engine.process_ocr_text(raw_text, confidence=1.0)
+            return {
+                "extracted_text": ocr_res["text"],
+                "total_pages": 1,
+                "is_scanned": False,
+                "ocr_confidence": 1.0,
+                "ambiguities": ocr_res["ambiguities"],
+                "pages": [{"page_number": 1, "text": ocr_res["text"], "is_ocr": False, "confidence": 1.0, "ambiguities": ocr_res["ambiguities"]}],
+                "checksum": self.compute_checksum(file_bytes)
+            }
 
         avg_confidence = total_confidence / max(len(pages_content), 1)
 

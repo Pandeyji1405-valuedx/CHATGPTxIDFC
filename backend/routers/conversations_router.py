@@ -202,17 +202,29 @@ def delete_conversation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    conv = db.query(Conversation).filter(
-        Conversation.id == conversation_id,
-        Conversation.user_id == current_user.id
-    ).first()
+    try:
+        conv = db.query(Conversation).filter(
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id
+        ).first()
 
-    if not conv:
+        if not conv:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found or unauthorized"
+            )
+
+        # Explicitly clean up messages and dependent records
+        db.query(Message).filter(Message.conversation_id == conv.id).delete(synchronize_session=False)
+        db.delete(conv)
+        db.commit()
+        return {"message": "Conversation deleted successfully"}
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found or unauthorized"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete conversation."
         )
-
-    db.delete(conv)
-    db.commit()
-    return {"message": "Conversation deleted successfully"}

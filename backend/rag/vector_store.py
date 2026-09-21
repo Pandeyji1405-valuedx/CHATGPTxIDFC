@@ -182,6 +182,9 @@ class HybridVectorStore:
         - Active vs Superseded status resolution
         - Multi-tenant isolation
         """
+        if not query or not query.strip():
+            return []
+
         if not self.is_indexed or self.tfidf_matrix is None or not self.chunk_records:
             self.ensure_indexed(db=db)
 

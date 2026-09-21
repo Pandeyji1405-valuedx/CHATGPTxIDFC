@@ -109,3 +109,111 @@ def test_chat_attachment_docx_and_null_byte_sanitization(client, auth_headers_us
     chat_data = chat_res.json()
     assert chat_data["source_type"] == "ATTACHMENT_ANALYSIS"
     assert "\x00" not in chat_data["answer"]
+
+def test_chat_attachment_with_rbi_guidelines_matching_query(client, auth_headers_user1):
+    file_content = b"Loan Agreement Draft: Lender levies a penal interest of 36% per annum on missed payments with no Key Fact Statement (KFS) provided to the borrower."
+    file_obj = io.BytesIO(file_content)
+
+    upload_res = client.post(
+        "/api/chat/upload-attachment",
+        files={"file": ("sample_loan_agreement.pdf", file_obj, "application/pdf")},
+        headers=auth_headers_user1
+    )
+    assert upload_res.status_code == 200
+    att = upload_res.json()["attachment"]
+
+    # User asks "whether it matches the rbi guidelines"
+    chat_res = client.post(
+        "/api/chat",
+        json={
+            "query": "whether it matches the rbi guidelines",
+            "attachment": att
+        },
+        headers=auth_headers_user1
+    )
+    assert chat_res.status_code == 200
+    chat_data = chat_res.json()
+    assert chat_data["source_type"] == "ATTACHMENT_ANALYSIS"
+    ans = chat_data["answer"]
+    # Verify that the answer directly addresses the RBI compliance check and does NOT give the old placeholder
+    assert "Ask specific questions" not in ans
+    assert ("rbi" in ans.lower() or "guideline" in ans.lower() or "compliance" in ans.lower() or "kfs" in ans.lower() or "key fact statement" in ans.lower())
+
+def test_chat_attachment_specific_fact_query_answers_directly(client, auth_headers_user1):
+    file_content = b"Vendor Policy: Customer dispute resolution SLA is 3 business days for electronic fund transfers."
+    file_obj = io.BytesIO(file_content)
+
+    upload_res = client.post(
+        "/api/chat/upload-attachment",
+        files={"file": ("vendor_sla.pdf", file_obj, "application/pdf")},
+        headers=auth_headers_user1
+    )
+    assert upload_res.status_code == 200
+    att = upload_res.json()["attachment"]
+
+    chat_res = client.post(
+        "/api/chat",
+        json={
+            "query": "What is the dispute resolution SLA stated in this document?",
+            "attachment": att
+        },
+        headers=auth_headers_user1
+    )
+    assert chat_res.status_code == 200
+    chat_data = chat_res.json()
+    assert chat_data["source_type"] == "ATTACHMENT_ANALYSIS"
+    assert "3" in chat_data["answer"] or "SLA" in chat_data["answer"] or "business days" in chat_data["answer"]
+
+def test_chat_attachment_table_formatting_and_custom_instruction(client, auth_headers_user1):
+    file_content = b"Banking Loan Contract: Principal: Rs 10 Lakhs, Interest Rate: 11.5%, Processing Fee: Rs 5,000."
+    file_obj = io.BytesIO(file_content)
+
+    upload_res = client.post(
+        "/api/chat/upload-attachment",
+        files={"file": ("contract_terms.pdf", file_obj, "application/pdf")},
+        headers=auth_headers_user1
+    )
+    assert upload_res.status_code == 200
+    att = upload_res.json()["attachment"]
+
+    chat_res = client.post(
+        "/api/chat",
+        json={
+            "query": "Format the financial figures from this contract into a markdown table with columns Parameter and Value",
+            "attachment": att
+        },
+        headers=auth_headers_user1
+    )
+    assert chat_res.status_code == 200
+    chat_data = chat_res.json()
+    assert chat_data["source_type"] == "ATTACHMENT_ANALYSIS"
+    ans = chat_data["answer"]
+    assert "10" in ans or "11.5" in ans or "5,000" in ans or "|" in ans
+
+def test_chat_attachment_advisory_email_drafting_instruction(client, auth_headers_user1):
+    file_content = b"Audit Report: Branch KYC records showed 15 accounts with expired OVD documents requiring immediate outreach."
+    file_obj = io.BytesIO(file_content)
+
+    upload_res = client.post(
+        "/api/chat/upload-attachment",
+        files={"file": ("branch_audit.pdf", file_obj, "application/pdf")},
+        headers=auth_headers_user1
+    )
+    assert upload_res.status_code == 200
+    att = upload_res.json()["attachment"]
+
+    chat_res = client.post(
+        "/api/chat",
+        json={
+            "query": "Draft an urgent advisory email to the Branch Manager requesting KYC remediation for these 15 accounts.",
+            "attachment": att
+        },
+        headers=auth_headers_user1
+    )
+    assert chat_res.status_code == 200
+    chat_data = chat_res.json()
+    assert chat_data["source_type"] == "ATTACHMENT_ANALYSIS"
+    ans = chat_data["answer"]
+    assert any(w in ans.lower() for w in ["branch manager", "dear", "subject", "remediation", "kyc", "15", "ovd", "accounts"])
+
+

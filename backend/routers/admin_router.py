@@ -319,36 +319,47 @@ def delete_document(
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    doc = db.query(KnowledgeDocument).filter(KnowledgeDocument.id == document_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
+    try:
+        doc = db.query(KnowledgeDocument).filter(KnowledgeDocument.id == document_id).first()
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+
+        if doc.file_path and os.path.exists(doc.file_path):
+            try:
+                os.remove(doc.file_path)
+            except Exception:
+                pass
+
+        db.query(KnowledgeChunk).filter(KnowledgeChunk.document_id == document_id).delete(synchronize_session=False)
+        db.delete(doc)
+        db.commit()
+        rebuild_vector_index(db)
+
+        audit = AuditLog(
+            tenant_id=getattr(current_admin, "tenant_id", "default_tenant"),
+            user_id=current_admin.id,
+            action="DELETE_KB",
+            resource_type="knowledge_document",
+            resource_id=document_id,
+            details=f"Deleted document {doc.title}",
+            ip_address=request.client.host if request.client else "127.0.0.1"
         )
+        db.add(audit)
+        db.commit()
 
-    if doc.file_path and os.path.exists(doc.file_path):
-        try:
-            os.remove(doc.file_path)
-        except Exception:
-            pass
-
-    db.delete(doc)
-    db.commit()
-    rebuild_vector_index(db)
-
-    audit = AuditLog(
-        tenant_id=getattr(current_admin, "tenant_id", "default_tenant"),
-        user_id=current_admin.id,
-        action="DELETE_KB",
-        resource_type="knowledge_document",
-        resource_id=document_id,
-        details=f"Deleted document {doc.title}",
-        ip_address=request.client.host if request.client else "127.0.0.1"
-    )
-    db.add(audit)
-    db.commit()
-
-    return {"message": "Document deleted and index refreshed"}
+        return {"message": "Document deleted and index refreshed"}
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete document: {str(e)}"
+        )
 
 @router.post("/reindex")
 def reindex_all(

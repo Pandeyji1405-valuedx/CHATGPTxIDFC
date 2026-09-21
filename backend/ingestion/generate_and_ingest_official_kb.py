@@ -481,10 +481,19 @@ REAL_OFFICIAL_DIRECTIVES: List[Dict[str, Any]] = [
         "source_url": "https://www.sebi.gov.in/legal/regulations/jan-2024/sebi-lodr-regulations-2024.pdf",
         "sections": [
             {
-                "heading": "Section 1: Materiality Thresholds for Event Disclosures",
+                "heading": "Section 1: Regulation 30 Materiality Thresholds and Mandatory Disclosure Timelines",
                 "content": (
-                    "Listed entities shall promptly disclose events or information which are material. Under Regulation 30, an event is deemed "
-                    "material if omission results in significant market reaction or the impact exceeds any of the following quantitative criteria:\n"
+                    "Under Regulation 30 of the SEBI (Listing Obligations and Disclosure Requirements) Regulations, 2015 (Updated 2024), "
+                    "listed entities are mandated to promptly disclose all material events or information to stock exchanges.\n\n"
+                    "Mandatory Disclosure Timelines under Regulation 30(6):\n"
+                    "1. Board Meeting Decisions: Disclose within 30 minutes from the closure/conclusion of the meeting of the Board of Directors "
+                    "(e.g., financial results, dividend declaration, fund raising, acquisitions, or buybacks).\n"
+                    "2. Internal Events: Disclose within 12 hours from the occurrence of the event or information if emanating from within the listed entity.\n"
+                    "3. External Events: Disclose within 24 hours from the occurrence of the event or information if not emanating from within the listed entity "
+                    "(e.g., regulatory enforcement actions, third-party litigations, or natural disruptions).\n"
+                    "4. Market Rumour Confirmation: Disclose/confirm/deny within 24 hours from reporting for top 100 / top 250 listed entities.\n\n"
+                    "Quantitative Materiality Thresholds under Regulation 30(4):\n"
+                    "An event is deemed material if omission results in significant market reaction or the impact exceeds any of the following criteria:\n"
                     "1. 2% of turnover, as per the last audited consolidated financial statements;\n"
                     "2. 2% of net worth, as per the last audited consolidated financial statements;\n"
                     "3. 5% of the average of absolute value of profit or loss after tax, as per the last three audited consolidated financial statements."
@@ -818,7 +827,7 @@ def seed_and_ingest_all():
                 source_url=doc_info["source_url"],
                 document_type="scanned_pdf" if doc_info.get("is_ocr") else "pdf",
                 file_path=pdf_path,
-                page_count=extracted["page_count"],
+                page_count=extracted.get("page_count", extracted.get("total_pages", len(extracted.get("pages", [])))),
                 is_ocr=doc_info.get("is_ocr", False),
                 ocr_confidence=0.84 if doc_info.get("is_ocr") else 1.0,
                 ocr_ambiguity_notes="Scanned document with character ambiguities" if doc_info.get("is_ocr") else None,

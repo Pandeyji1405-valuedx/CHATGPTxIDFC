@@ -8,46 +8,87 @@ from backend.auth import verify_password, get_password_hash, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+# In-memory brute-force defense tracking: {identifier: {"count": int, "lockout_until": float}}
+FAILED_LOGIN_ATTEMPTS: dict = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_DURATION_SECONDS = 300  # 5 minutes
+
+def _check_brute_force_lockout(identifier: str):
+    now = datetime.now().timestamp()
+    record = FAILED_LOGIN_ATTEMPTS.get(identifier)
+    if record:
+        if record.get("lockout_until", 0) > now:
+            remaining = int(record["lockout_until"] - now)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many failed login attempts. Account temporarily locked. Please try again in {remaining} seconds."
+            )
+        elif record.get("lockout_until", 0) <= now and record.get("count", 0) >= MAX_LOGIN_ATTEMPTS:
+            # Lockout expired, reset
+            FAILED_LOGIN_ATTEMPTS.pop(identifier, None)
+
+def _record_failed_attempt(identifier: str):
+    now = datetime.now().timestamp()
+    record = FAILED_LOGIN_ATTEMPTS.get(identifier, {"count": 0, "lockout_until": 0})
+    record["count"] += 1
+    if record["count"] >= MAX_LOGIN_ATTEMPTS:
+        record["lockout_until"] = now + LOCKOUT_DURATION_SECONDS
+    FAILED_LOGIN_ATTEMPTS[identifier] = record
+
+def _clear_failed_attempts(identifier: str):
+    FAILED_LOGIN_ATTEMPTS.pop(identifier, None)
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register_user(
     req: UserRegisterRequest,
     request: Request,
     db: Session = Depends(get_db)
 ):
-    existing = db.query(User).filter(User.email == req.email.lower()).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this email address already exists"
+    try:
+        existing = db.query(User).filter(User.email == req.email.lower().strip()).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this email address already exists"
+            )
+
+        new_user = User(
+            name=req.name.strip(),
+            email=req.email.lower().strip(),
+            password_hash=get_password_hash(req.password),
+            auth_provider="local",
+            role="user"
         )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
 
-    new_user = User(
-        name=req.name.strip(),
-        email=req.email.lower().strip(),
-        password_hash=get_password_hash(req.password),
-        auth_provider="local",
-        role="user"
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+        # Audit log
+        audit = AuditLog(
+            user_id=new_user.id,
+            action="REGISTER",
+            details="User registered with email/password",
+            ip_address=request.client.host if request.client else "127.0.0.1"
+        )
+        db.add(audit)
+        db.commit()
 
-    # Audit log
-    audit = AuditLog(
-        user_id=new_user.id,
-        action="REGISTER",
-        details="User registered with email/password",
-        ip_address=request.client.host if request.client else "127.0.0.1"
-    )
-    db.add(audit)
-    db.commit()
-
-    token = create_access_token({"sub": new_user.id, "email": new_user.email, "role": new_user.role})
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        user=UserResponse.model_validate(new_user)
-    )
+        token = create_access_token({"sub": new_user.id, "email": new_user.email, "role": new_user.role})
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer",
+            user=UserResponse.model_validate(new_user)
+        )
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to register user account."
+        )
 
 @router.post("/login", response_model=TokenResponse)
 def login_user(
@@ -55,47 +96,65 @@ def login_user(
     request: Request,
     db: Session = Depends(get_db)
 ):
+    client_ip = request.client.host if request.client else "127.0.0.1"
     search_email = req.email.lower().strip()
-    user = db.query(User).filter(User.email == search_email).first()
-    
-    # Allow matching by username or substring prefix (e.g. "devesh.pandey")
-    if not user:
-        user = db.query(User).filter(
-            (User.email.ilike(f"%{search_email}%")) | (User.name.ilike(f"%{search_email}%"))
-        ).first()
+    lockout_key = f"{client_ip}:{search_email}"
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account does not exist. Please sign up."
+    _check_brute_force_lockout(lockout_key)
+
+    try:
+        user = db.query(User).filter(User.email == search_email).first()
+        
+        # Match exact email or exact full username
+        if not user:
+            user = db.query(User).filter(User.name.ilike(req.email.strip())).first()
+
+        if not user:
+            _record_failed_attempt(lockout_key)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Account does not exist. Please sign up."
+            )
+
+        # If user was created via Google OAuth / without password, set password on first explicit login
+        if user.password_hash is None and req.password:
+            user.password_hash = get_password_hash(req.password)
+            db.commit()
+        elif not verify_password(req.password, user.password_hash):
+            _record_failed_attempt(lockout_key)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password. Please try again."
+            )
+
+        # Reset failed login count on successful authentication
+        _clear_failed_attempts(lockout_key)
+
+        # Audit log
+        audit = AuditLog(
+            user_id=user.id,
+            action="LOGIN",
+            details="User logged in successfully",
+            ip_address=client_ip
         )
-
-    # If user was created via Google OAuth / without password, set password on first explicit login
-    if user.password_hash is None and req.password:
-        user.password_hash = get_password_hash(req.password)
+        db.add(audit)
         db.commit()
-    elif not verify_password(req.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect password. Please try again."
+
+        token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer",
+            user=UserResponse.model_validate(user)
         )
-
-    # Audit log
-    audit = AuditLog(
-        user_id=user.id,
-        action="LOGIN",
-        details="User logged in successfully",
-        ip_address=request.client.host if request.client else "127.0.0.1"
-    )
-    db.add(audit)
-    db.commit()
-
-    token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        user=UserResponse.model_validate(user)
-    )
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication failed."
+        )
 
 @router.post("/switch-account", response_model=TokenResponse)
 def switch_account_session(
@@ -104,41 +163,49 @@ def switch_account_session(
     db: Session = Depends(get_db)
 ):
     """
-    Seamless multi-account session switcher. Re-issues a valid token for an existing saved user.
+    Seamless multi-account session switcher with exact identifier matching.
     """
-    user = None
-    if req.user_id:
-        user = db.query(User).filter(User.id == req.user_id).first()
-    if not user and req.email:
-        search_email = req.email.lower().strip()
-        user = db.query(User).filter(User.email == search_email).first()
+    try:
+        user = None
+        if req.user_id:
+            user = db.query(User).filter(User.id == req.user_id.strip()).first()
+        if not user and req.email:
+            search_email = req.email.lower().strip()
+            user = db.query(User).filter(User.email == search_email).first()
+            if not user:
+                user = db.query(User).filter(User.name.ilike(req.email.strip())).first()
+
         if not user:
-            user = db.query(User).filter(
-                (User.email.ilike(f"%{search_email}%")) | (User.name.ilike(f"%{search_email}%"))
-            ).first()
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User account not found"
+            )
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User account not found"
+        token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
+        
+        audit = AuditLog(
+            user_id=user.id,
+            action="SWITCH_ACCOUNT",
+            details=f"Switched session to {user.email}",
+            ip_address=request.client.host if request.client else "127.0.0.1"
         )
+        db.add(audit)
+        db.commit()
 
-    token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
-    
-    audit = AuditLog(
-        user_id=user.id,
-        action="SWITCH_ACCOUNT",
-        details=f"Switched session to {user.email}",
-        ip_address=request.client.host if request.client else "127.0.0.1"
-    )
-    db.add(audit)
-    db.commit()
-
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        user=UserResponse.model_validate(user)
-    )
+        return TokenResponse(
+            access_token=token,
+            token_type="bearer",
+            user=UserResponse.model_validate(user)
+        )
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to switch session."
+        )
 
 @router.post("/google", response_model=TokenResponse)
 def google_auth(

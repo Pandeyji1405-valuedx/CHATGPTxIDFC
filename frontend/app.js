@@ -296,7 +296,17 @@ async function authenticatedFetch(url, options = {}) {
     ...options.headers,
     ...(token ? { "Authorization": `Bearer ${token}` } : {})
   };
-  return fetch(url, { ...options, headers });
+  try {
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 && !url.includes("/api/auth/")) {
+      console.warn("Session expired or unauthorized for:", url);
+      showToast("Your session has expired. Please log in again to continue.");
+    }
+    return res;
+  } catch (e) {
+    console.error("Network error during API fetch:", e);
+    throw e;
+  }
 }
 
 function updateUIForAuth() {

@@ -586,7 +586,7 @@ class NLPEngine:
         if re.search(r"\b(when\s+did|when\s+was|effective\s+date|start\s+date|launch\s+date|since\s+when|from\s+which\s+date|date\s+of\s+effect|came\s+into\s+action|came\s+into\s+effect|in\s+effect|what\s+date|which\s+year|since\s+which\s+year|historical\s+date)\b", q):
             return {"intent": "TEMPORAL_EFFECTIVE"}
 
-        if re.search(r"\b(operating\s+hours|timings?|working\s+hours|settlement\s+batch|how\s+many\s+batches|batch\s+timings?|24x7|settlement\s+timeline|turnaround\s+time|credit\s+timeline|return\s+timeline|how\s+long\s+does\s+it\s+take|tat)\b", q):
+        if re.search(r"\b(operating\s+hours|timings?|working\s+hours|settlement\s+batch|how\s+many\s+batches|batch\s+timings?|24x7|settlement\s+timeline|turnaround\s+time|credit\s+timeline|return\s+timeline|how\s+long\s+does\s+it\s+take|tat|disclosure\s+timelines?|timelines?|deadlines?|time\s*limits?|timeframes?)\b", q):
             return {"intent": "OPERATING_HOURS_TIMELINES"}
 
         if re.search(r"\b(minimum\s+amount|maximum\s+amount|max\s+limit|min\s+limit|transaction\s+limit|ltv|loan\s+to\s+value|max\s+ltv|cap|compensation\s+amount|how\s+much\s+money|what\s+is\s+the\s+limit|ceiling|maximum\s+loan|threshold)\b", q):

@@ -24,7 +24,7 @@ from backend.config import settings
 from backend.database import Base, engine
 from backend.models import (
     User, Conversation, Message, Response, Entity,
-    KnowledgeDocument, KnowledgeChunk, AuditLog
+    KnowledgeDocument, KnowledgeChunk, AuditLog, FeedbackItem
 )
 
 target_metadata = Base.metadata

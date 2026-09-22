@@ -1,17 +1,23 @@
 import json
+import secrets
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from backend.database import get_db
 from backend.models import User, Conversation, Message, Response
 from backend.schemas import (
     ConversationSummary, ConversationDetail, ConversationCreate,
-    ConversationRename, MessageResponse, CitationItem, AmbiguityFlag
+    ConversationRename, MessageResponse, CitationItem, AmbiguityFlag,
+    ShareConversationRequest, ShareConversationResponse,
+    SharedConversationViewResponse, SharedMessageItem
 )
 from backend.auth import get_current_user
+from backend.cache.redis_cache import redis_cache
 
 router = APIRouter(prefix="/api/conversations", tags=["Conversations"])
+share_router = APIRouter(prefix="/api/share", tags=["Share"])
 
 @router.get("", response_model=List[ConversationSummary])
 def list_conversations(
@@ -195,6 +201,106 @@ def rename_conversation(
         updated_at=conv.updated_at,
         message_count=db.query(Message).filter(Message.conversation_id == conv.id).count()
     )
+
+@router.post("/{conversation_id}/share", response_model=ShareConversationResponse)
+def share_conversation(
+    conversation_id: str,
+    req: ShareConversationRequest = ShareConversationRequest(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    FR-24: Generates a secure, read-only shareable snapshot link for compliance review and enterprise collaboration.
+    """
+    conv = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == current_user.id
+    ).first()
+
+    if not conv:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found or unauthorized"
+        )
+
+    db_msgs = db.query(Message).filter(
+        Message.conversation_id == conversation_id
+    ).order_by(Message.created_at.asc()).all()
+
+    shared_messages = []
+    for m in db_msgs:
+        citations = []
+        source_type = None
+        if m.response:
+            source_type = m.response.source_type
+            if m.response.citations_json:
+                try:
+                    citations = json.loads(m.response.citations_json)
+                except Exception:
+                    pass
+        content = m.original_content if m.role == "user" else (m.response.answer if m.response else m.original_content)
+        shared_messages.append({
+            "role": m.role,
+            "content": content,
+            "source_type": source_type,
+            "citations": citations,
+            "created_at": m.created_at.isoformat() if m.created_at else datetime.now(timezone.utc).isoformat()
+        })
+
+    share_token = secrets.token_urlsafe(16)
+    hours = req.expires_in_hours or 72
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=hours)
+    ttl_seconds = hours * 3600
+
+    snapshot_payload = {
+        "title": conv.title,
+        "created_at": conv.created_at.isoformat() if conv.created_at else datetime.now(timezone.utc).isoformat(),
+        "shared_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "messages": shared_messages,
+        "regulator_scope": "ALL",
+        "shared_by": current_user.name
+    }
+
+    redis_cache.set(f"shared_conv:{share_token}", json.dumps(snapshot_payload), ex=ttl_seconds)
+
+    return ShareConversationResponse(
+        conversation_id=conv.id,
+        share_token=share_token,
+        share_url=f"/share/{share_token}",
+        title=conv.title,
+        expires_at=expires_at.isoformat(),
+        message="Secure read-only conversation snapshot generated successfully."
+    )
+
+@share_router.get("/{share_token}", response_model=SharedConversationViewResponse)
+def get_shared_conversation_view(share_token: str):
+    """
+    Public read-only view for shared conversation snapshot.
+    """
+    data_str = redis_cache.get(f"shared_conv:{share_token}")
+    if not data_str:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shared conversation link has expired or is invalid."
+        )
+
+    try:
+        data = json.loads(data_str)
+        return SharedConversationViewResponse(
+            title=data.get("title", "Shared Conversation"),
+            created_at=data.get("created_at", ""),
+            shared_at=data.get("shared_at", ""),
+            expires_at=data.get("expires_at"),
+            messages=[SharedMessageItem(**m) for m in data.get("messages", [])],
+            regulator_scope=data.get("regulator_scope", "ALL"),
+            is_expired=False
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load shared conversation snapshot."
+        )
 
 @router.delete("/{conversation_id}")
 def delete_conversation(

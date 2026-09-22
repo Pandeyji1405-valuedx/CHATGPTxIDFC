@@ -288,3 +288,85 @@ class ChatFeedbackResponse(BaseModel):
     status: str
     message: str
     message_id: str
+
+# --- Web Scraping Schemas ---
+class ScrapeRBIRequest(BaseModel):
+    url: Optional[str] = "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13412&Mode=0"
+    use_selenium: Optional[bool] = True
+    explore_sublinks: Optional[bool] = True
+    explore_navigations: Optional[bool] = True
+    max_nav_items: Optional[int] = 10
+
+class ScrapeRBIResponse(BaseModel):
+    status: str
+    target_url: str
+    used_selenium: bool
+    total_documents_scraped: int
+    total_urls_visited: int
+    documents: List[Dict[str, Any]] = []
+    total_knowledge_base_documents: int
+    total_knowledge_base_chunks: int
+
+# --- Enterprise SSO & Personal Memory & Share Schemas (FR-01, FR-18, FR-24) ---
+class UserMemoryItem(BaseModel):
+    key: str
+    category: str # preference, entity, topic, recent_context
+    value: str
+    created_at: Optional[str] = None
+    confidence: float = 1.0
+
+class UserMemoriesResponse(BaseModel):
+    user_id: str
+    user_name: str
+    memories: List[UserMemoryItem] = []
+    total_count: int
+
+class DeleteMemoryResponse(BaseModel):
+    status: str
+    message: str
+    key: Optional[str] = None
+
+class ShareConversationRequest(BaseModel):
+    expires_in_hours: Optional[int] = 72 # 3 days default
+
+class ShareConversationResponse(BaseModel):
+    conversation_id: str
+    share_token: str
+    share_url: str
+    title: str
+    expires_at: str
+    message: str
+
+class SharedMessageItem(BaseModel):
+    role: str
+    content: str
+    source_type: Optional[str] = None
+    citations: Optional[List[Dict[str, Any]]] = None
+    created_at: str
+
+class SharedConversationViewResponse(BaseModel):
+    title: str
+    created_at: str
+    shared_at: str
+    expires_at: Optional[str] = None
+    messages: List[SharedMessageItem] = []
+    regulator_scope: Optional[str] = "ALL"
+    is_expired: bool = False
+
+class EnterpriseSSOLoginRequest(BaseModel):
+    provider: str = "azure_ad" # azure_ad, saml_okta, saml_ping
+    id_token: Optional[str] = None
+    saml_response: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    tenant_domain: Optional[str] = "idfcbank.com"
+    department: Optional[str] = "Compliance & Regulatory Affairs"
+
+class EnterpriseSSOResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+    provider: str
+    sso_federated: bool = True
+
+

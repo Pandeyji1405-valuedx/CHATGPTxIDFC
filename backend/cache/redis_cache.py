@@ -72,13 +72,14 @@ class RedisCacheManager:
                 pass
         return self.fallback_cache.get(key)
 
-    def set(self, key: str, value: str, ttl_seconds: int = 3600) -> bool:
+    def set(self, key: str, value: str, ttl_seconds: int = 3600, ex: Optional[int] = None) -> bool:
+        effective_ttl = ex if ex is not None else ttl_seconds
         if self.is_redis_available and self.client:
             try:
-                return bool(self.client.set(key, value, ex=ttl_seconds))
+                return bool(self.client.set(key, value, ex=effective_ttl))
             except Exception:
                 pass
-        return self.fallback_cache.set(key, value, ex=ttl_seconds)
+        return self.fallback_cache.set(key, value, ex=effective_ttl)
 
     def delete(self, *keys: str) -> int:
         if self.is_redis_available and self.client:

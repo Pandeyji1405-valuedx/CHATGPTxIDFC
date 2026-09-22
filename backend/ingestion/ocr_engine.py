@@ -58,7 +58,7 @@ class OCREngine:
 
             if is_numeric_context:
                 # 5 vs S: Only in numeric context (e.g. ₹SO,OOO or 8.S% or 5S00)
-                if re.search(r"[₹$][0-9,]*S|S[0-9,]+|\d+\.S%?|\d+S\d+", clean_word):
+                if re.search(r"[₹$][0-9,]*S|\d+\.S%?|\d+S\d+|S\d{3,}", clean_word):
                     flags.append({
                         "character_pair": "5 ↔ S",
                         "context_term": clean_word,

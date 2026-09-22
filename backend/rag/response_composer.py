@@ -100,8 +100,12 @@ class ResponseComposer:
 
         # Append Ambiguity / Human Verification Notice if OCR ambiguities exist
         if ambiguity_flags:
+            clean_flags = [
+                f for f in ambiguity_flags
+                if not re.match(r"^S\d+$|^chunk_|^att-|^[0-9a-f]{8}-", f.get("context_term", ""), re.IGNORECASE)
+            ]
             amb_notes = []
-            for flag in ambiguity_flags[:3]:
+            for flag in clean_flags[:3]:
                 amb_notes.append(f"• `{flag.get('context_term')}` contains visually similar characters (`{flag.get('character_pair')}`).")
             
             if amb_notes:

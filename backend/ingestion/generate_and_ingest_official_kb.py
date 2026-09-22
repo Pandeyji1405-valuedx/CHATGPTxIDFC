@@ -610,6 +610,37 @@ REAL_OFFICIAL_DIRECTIVES: List[Dict[str, Any]] = [
         ]
     },
     {
+        "filename": "RBI_Natural_Calamities_Relief_Measures_Master_Direction.pdf",
+        "title": "RBI Master Direction - Relief Measures by Banks in Areas Affected by Natural Calamities",
+        "notification_number": "FIDD.No.FSD.BC.01/05.10.001/2018-19",
+        "publication_date": "2018-07-02",
+        "effective_date": "2018-07-02",
+        "effective_from": "2018-07-02",
+        "regulator": "RBI",
+        "source": "RBI",
+        "status": "active",
+        "source_url": "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=11313",
+        "sections": [
+            {
+                "heading": "Section 1: Restructuring and Rescheduling of Existing Loans in Calamity Affected Areas",
+                "content": (
+                    "In areas affected by natural calamities (floods, cyclones, droughts, earthquakes) declared by State/District authorities, "
+                    "banks are permitted to restructure and reschedule short-term and long-term loans. Banks may grant a moratorium of at least one "
+                    "year on principal and interest repayments for affected borrowers, farmers, small businesses, and retail loans. The restructured "
+                    "portion may be converted into term loans repayable over 3 to 5 years without treating the account as Non-Performing Asset (NPA)."
+                )
+            },
+            {
+                "heading": "Section 2: Fresh Credit and Consumption Loans",
+                "content": (
+                    "Banks shall provide fresh finance to affected borrowers to resume economic and agricultural activities. In addition, "
+                    "banks may sanction clean consumption loans up to ₹10,000 to affected individuals/households to meet urgent domestic needs, "
+                    "without requiring collateral or margin money."
+                )
+            }
+        ]
+    },
+    {
         "filename": "RBI_Outdated_Housing_Loan_LTV_2015.pdf",
         "title": "RBI Superseded Circular on Individual Housing Loans - LTV Ratios & Risk Weights (2015)",
         "notification_number": "RBI/2015-16/208 DBR.BP.BC.No.44/08.12.015/2015-16",

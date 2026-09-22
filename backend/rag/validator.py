@@ -69,7 +69,26 @@ class AnswerValidator:
         for raw_circ in answer_facts["circulars"]:
             circ = raw_circ.strip(".,;:()[]{}'\" \t\n")
             norm_circ = circ.upper().replace("O", "0").replace("S", "5").replace("B", "8").replace("I", "1")
-            if circ and (circ.upper() not in context_upper and norm_circ not in ocr_normalized_context):
+            
+            # 1. Exact full match
+            if circ.upper() in context_upper or norm_circ in ocr_normalized_context:
+                continue
+
+            # 2. Match distinctive unique components (excluding generic regulator names/prefixes)
+            distinctive_tokens = [
+                p for p in re.split(r"[\./\-]", circ.upper())
+                if len(p) >= 2 and p not in {"RBI", "SEBI", "IRDAI", "CIR", "REC", "SEC", "DIR", "NO", "P", "LAD", "NRO", "GN", "BC", "BP", "DOR", "DBR", "DPSS", "CEP", "FIDD", "DBOD", "DBS"}
+            ]
+
+            is_grounded = False
+            if distinctive_tokens:
+                matched_distinctive = [p for p in distinctive_tokens if p in context_upper or p.replace("O", "0").replace("S", "5").replace("B", "8").replace("I", "1") in ocr_normalized_context]
+                # At least one numeric/serial identifier must match and >= 50% of distinctive tokens present
+                has_num_match = any(re.search(r"\d", p) for p in matched_distinctive)
+                if has_num_match and (len(matched_distinctive) / len(distinctive_tokens) >= 0.5):
+                    is_grounded = True
+
+            if not is_grounded:
                 violations.append(f"Regulatory circular '{circ}' not found in retrieved context.")
 
         # Check percentages

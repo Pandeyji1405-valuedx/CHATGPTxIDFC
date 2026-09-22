@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.config import settings
 from backend.database import Base, engine
 from backend.models import (
-    User, Conversation, Message, Response, Entity,
+    User, Conversation, ConversationSummary, Message, Response, Entity,
     KnowledgeDocument, KnowledgeChunk, AuditLog, FeedbackItem
 )
 

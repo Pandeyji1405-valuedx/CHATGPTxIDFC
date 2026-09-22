@@ -20,11 +20,18 @@ BANKING_ACRONYMS = {
     "KFS": "Key Fact Statement (KFS)",
     "RE": "Regulated Entity (RE)",
     "LSP": "Lending Service Provider (LSP)",
+    "DLA": "Digital Lending App (DLA)",
     "PSL": "Priority Sector Lending (PSL)",
     "FASTAG": "FASTag Electronic Toll Collection",
     "RBI": "Reserve Bank of India (RBI)",
+    "SEBI": "Securities and Exchange Board of India (SEBI)",
+    "IRDAI": "Insurance Regulatory and Development Authority of India (IRDAI)",
+    "LODR": "Listing Obligations and Disclosure Requirements (LODR)",
     "FD": "Fixed Deposit (FD)",
-    "RD": "Recurring Deposit (RD)"
+    "RD": "Recurring Deposit (RD)",
+    "BSBDA": "Basic Savings Bank Deposit Account (BSBDA)",
+    "TAT": "Turn Around Time (TAT)",
+    "APR": "Annual Percentage Rate (APR)"
 }
 
 EXPANDED_ACRONYMS_INFO = {
@@ -99,41 +106,65 @@ EXPANDED_ACRONYMS_INFO = {
     "RD": {
         "full_form": "Recurring Deposit",
         "description": "A regular investment deposit product allowing individuals to save a fixed monthly sum and earn interest equivalent to fixed deposits."
+    },
+    "LODR": {
+        "full_form": "Listing Obligations and Disclosure Requirements",
+        "description": "SEBI regulations governing continuous corporate governance, financial disclosures, and timely notification of material events (Regulation 30) for listed companies."
+    },
+    "BSBDA": {
+        "full_form": "Basic Savings Bank Deposit Account",
+        "description": "A zero-balance financial inclusion savings account with no minimum balance requirement and free basic banking services as mandated by RBI."
     }
 }
 
-# Hinglish & Colloquial Query Patterns to Standard English
+# Comprehensive Universal Typos, Hinglish & Layman Word Normalization
 HINGLISH_TRANSLATIONS = [
-    (r"\bmitakenly\b", "mistakenly"),
-    (r"\baccidently\b", "accidentally"),
-    (r"\bgalat\s+account\b", "wrong account"),
-    (r"\bgalat\s+khate\b", "wrong account"),
-    (r"\bkya hota hai\b", "what is"),
-    (r"\bkya hai\b", "what is"),
-    (r"\bkya h\b", "what is"),
-    (r"\bkaise kare\b", "how to do"),
-    (r"\bkaise karein\b", "how to do"),
-    (r"\bka rule kya h\b", "rules and guidelines"),
-    (r"\bka rule kya hai\b", "rules and guidelines"),
-    (r"\bka matlab kya hai\b", "definition and meaning"),
-    (r"\bke baare me batao\b", "details and requirements"),
-    (r"\bke bare me batao\b", "details and requirements"),
-    (r"\bke baare mein\b", "details about"),
-    (r"\bka limit kitna hai\b", "transaction limit"),
-    (r"\bka max amount kya h\b", "maximum transaction limit"),
-    (r"\bka max amount kya hai\b", "maximum transaction limit"),
+    # Common Misspellings & Typos
+    (r"\bmitakenly\b|\bmitskely\b", "mistakenly"),
+    (r"\baccidently\b|\baccidental\b", "accidentally"),
+    (r"\bgalat\s+account\b|\bgalat\s+khate\b|\bgalat\s+khata\b", "wrong account"),
+    (r"\bkya hota hai\b|\bkya hai\b|\bkya h\b", "what is"),
+    (r"\bkaise kare\b|\bkaise karein\b|\bkaise hota hai\b", "how to do"),
+    (r"\bka rule kya h\b|\bka rule kya hai\b|\bke rules\b", "rules and guidelines"),
+    (r"\bka matlab kya hai\b|\bmatlab kya hai\b", "definition and meaning"),
+    (r"\bke baare me batao\b|\bke bare me batao\b|\bke baare mein\b", "details and requirements"),
+    (r"\bka limit kitna hai\b|\bka max amount kya h\b|\bka max amount kya hai\b", "maximum transaction limit"),
     (r"\bmein kitna amount bhej sakte hai\b", "maximum transaction limit"),
     (r"\btransaction fail kyu hua\b", "transaction failure reasons and return guidelines"),
-    (r"\bbatao pls\b", "please explain"),
-    (r"\bbatao\b", "explain"),
+    (r"\bbatao pls\b|\bbatao\b|\bbolo\b", "please explain"),
     (r"\bchahiye\b", "required"),
-    (r"\blatest circular\b", "latest circular notification"),
+    (r"\blatest circular\b|\bnew circular\b", "latest circular notification"),
     (r"\biska kya matlab hai\b", "what does this mean"),
-    (r"\bkitna hai\b", "what is the limit"),
-    (r"\bkitna h\b", "what is the limit"),
-    (r"\brules kya hai\b", "what are the rules"),
-    (r"\brules kya h\b", "what are the rules"),
-    (r"\bpls\b", "please"),
+    (r"\bkitna hai\b|\bkitna h\b", "what is the limit"),
+    (r"\brules kya hai\b|\brules kya h\b", "what are the rules"),
+    (r"\bpls\b|\bplz\b", "please"),
+
+    # Universal Banking Domain Typo Normalization
+    (r"\bguide\s+lines?\b|\bguidlines?\b|\bguidline\b|\bgiudeline\b|\bguidlines\b", "guidelines"),
+    (r"\b(laon|loann|lon|loanz)\b", "loan"),
+    (r"\b(homelaon|houselaon|house\s+loan|ghar\s+loan|makaan\s+loan)\b", "home loan"),
+    (r"\b(interst|intrest|intrst|intreset|interset)\b", "interest"),
+    (r"\b(deposite|depost|diposit|diposite)\b", "deposit"),
+    (r"\b(acount|a/c|acnt|accnt|accoun|acc)\b", "account"),
+    (r"\b(transction|trnx|txns|transation|transacton|trnsaction)\b", "transaction"),
+    (r"\b(unautorized|unauthorise|unauthorized|unauthrised|unauth|un-authorised|un-authorized)\b", "unauthorized"),
+    (r"\b(foreclosre|forecloser|foreclozure|foreclosing|pre-payment|prepayment|pre-pay|prepay)\b", "foreclosure"),
+    (r"\b(calamaty|calamitees|calamitys)\b", "calamity"),
+    (r"\b(calamities)\b", "natural calamities"),
+    (r"\b(ombusman|ombudman|ombudsperson|ombusdman)\b", "ombudsman"),
+    (r"\b(cheque|check|cheq|chk)\b", "cheque"),
+    (r"\b(grivance|grivence|grievence|complent|complain|compalint)\b", "grievance"),
+    (r"\b(withdrwal|withdrawl|withdrw|withdrawn)\b", "withdrawal"),
+    (r"\b(pinalty|penality|panalty|penlty)\b", "penalty"),
+    (r"\b(fasttag|fas\s+tag|fast\s+tag|fasstag)\b", "fastag"),
+    (r"\b(aadher|aadhar|adhar|adharr)\b", "aadhaar"),
+    (r"\b(pasport|passsport|passprt)\b", "passport"),
+    (r"\b(insurence|insuranse|insurrance)\b", "insurance"),
+    (r"\b(moraterium|moritorium|moratoriam)\b", "moratorium"),
+    (r"\b(restrcturing|restructring|restructur)\b", "restructuring"),
+    (r"\b(disclosur|discloser|disclouser)\b", "disclosure"),
+    (r"\b(circuler|circlar|cirkular)\b", "circular"),
+    (r"\b(derection|directon|directns)\b", "direction")
 ]
 
 # Keywords indicating banking or regulatory domain intent
@@ -146,7 +177,9 @@ DOMAIN_KEYWORDS = [
     "ombudsman", "housing", "mortgage", "limit", "rules", "rate", "documents", "aadhaar", "pan",
     "passport", "sachin", "tendulkar", "stolen", "lost", "compromised", "scam", "wrong", "mistake",
     "mistakenly", "mitakenly", "money", "transfer", "transferred", "credit", "debited", "reversal",
-    "compensation", "turnaround", "tat", "delayed", "fail", "failed", "grievance", "complaint", "dispute"
+    "compensation", "turnaround", "tat", "delayed", "fail", "failed", "grievance", "complaint", "dispute",
+    "sebi", "lodr", "irdai", "policyholder", "free look", "calamity", "natural calamity", "moratorium",
+    "recovery agent", "digital lending", "apr", "bsbda", "zero balance", "inoperative", "dormant", "cheque"
 ]
 
 class NLPEngine:
@@ -384,21 +417,27 @@ class NLPEngine:
             normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
         return re.sub(r"\s+", " ", normalized).strip()
 
-    def resolve_coreference(
+    def resolve_pronouns_and_coreference(
         self,
         current_query: str,
-        conversation_history: List[Dict[str, Any]]
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        has_attachment: bool = False
     ) -> Tuple[str, List[str], bool]:
         """
-        Resolves pronouns (this, that, for this, needed for this, its, his, her, their, etc.)
-        and subjectless follow-up queries based on previous conversational context.
-        If multiple antecedents exist in the immediate previous context, prompts for clarification.
-        Returns: (resolved_query, resolved_entity_names, clarification_needed)
+        Resolves pronouns (he/she/him/her, its/it, this/that) and ellipsis follow-up questions
+        using entity memory from recent conversation history.
+        Returns: (resolved_query, resolved_entity_list, clarification_needed_flag)
         """
         if not conversation_history:
             return current_query, [], False
 
         query = current_query.strip()
+
+        # Check if the query is referring to an attached document or a general document inquiry
+        is_doc_reference = bool(re.search(r"\b(is this a\b|is this an\b|this doc|this document|this file|this pdf|this policy|this attachment|about this doc|about this file|in this doc|in this file|from this doc|from this file|check this|verify this|summarize this|explain this file|what is this doc|what is this file|what is this pdf|is this official|is this real|is this genuine)\b", query, re.IGNORECASE))
+        if is_doc_reference or (has_attachment and bool(re.search(r"\b(this|that|file|document|pdf|attachment)\b", query, re.IGNORECASE))):
+            return current_query, ["Active Uploaded Document" if has_attachment else "Document"], False
+
         AUTHORITY_ORGS = {"RBI", "Reserve Bank of India", "IDFC FIRST Bank", "IDFC Bank", "Bank"}
 
         # Extract entities from the user messages (most recent first)
@@ -656,55 +695,92 @@ class NLPEngine:
             "requested_depth": requested_depth
         }
 
-    def normalize_jumbled_descriptive_query(self, query: str) -> Tuple[str, List[str]]:
+    def normalize_jumbled_descriptive_query(self, query: str) -> Tuple[str, List[str], List[str]]:
         """
-        Handles jumbled, conversational descriptions, and sentence fragments to extract
-        the underlying canonical regulatory intent, sub-topics, and normalized search query.
+        Universal Layman & Jumbled Intent Normalizer:
+        Maps everyday conversational phrasing, colloquial expressions, and domain scenarios
+        to canonical regulatory topics and high-signal search keywords.
+        Returns: (query, subtopics, canonical_search_keywords)
         """
         lower = query.lower()
         subtopics = []
+        keywords = []
 
-        # 1. KYC / V-CIP / OVD descriptive variations
-        if "kyc" in lower or any(w in lower for w in ["know your customer", "v-cip", "vcip", "video kyc", "ovd"]):
-            subtopics.append("Know Your Customer (KYC)")
-            if any(w in lower for w in ["physical", "physically", "present", "presence", "in person", "branch"]):
-                subtopics.append("Physical Verification & Officially Valid Documents (OVD)")
-            if any(w in lower for w in ["video", "vcip", "v-cip", "authenticat", "digital", "online"]):
-                subtopics.append("Video-based Customer Identification Process (V-CIP)")
-            if any(w in lower for w in ["periodic", "update", "updation", "high risk", "medium risk", "low risk", "years"]):
-                subtopics.append("Periodic KYC Updation")
+        # 1. Housing Loans, LTV Ratios & Risk Weights
+        if any(w in lower for w in ["housing loan", "home loan", "ltv", "buy house", "purchase flat", "flat loan", "property loan", "dwelling", "loan to value"]):
+            subtopics.append("RBI Master Circular - Housing Finance & LTV Ratios")
+            keywords.extend(["Housing Loans", "LTV Ratios", "Loan to Value", "Risk Weights", "Individual Housing Loans", "Dwelling Units"])
 
-        # 2. Digital Lending / KFS / Cooling-off variations
-        if any(w in lower for w in ["lending", "loan", "cooling", "lookup", "kfs", "apr", "recovery agent"]):
-            if any(w in lower for w in ["digital lending", "app", "online loan", "kfs", "cooling-off", "look-up"]):
-                subtopics.append("RBI Digital Lending Directions 2022")
+        # 2. Loan Prepayment, Foreclosure & Floating Rate Norms
+        if any(w in lower for w in ["foreclosure", "prepayment", "close loan early", "pay loan before", "pre-closure", "floating rate loan", "foreclosure charges", "part payment penalty"]):
+            subtopics.append("IDFC Fair Lending Code & Foreclosure Norms")
+            keywords.extend(["Foreclosure Charges", "Prepayment Penalty", "Floating Rate Term Loans", "Individual Borrowers", "Fair Lending Code"])
 
-        # 3. Unauthorized transactions / Fraud liability variations
-        if any(w in lower for w in ["fraud", "unauthorized", "unauthorised", "stolen", "lost card", "wrong debit", "scam"]):
-            subtopics.append("Customer Protection & Zero Fraud Liability")
+        # 3. Recovery Agents, Digital Lending & Fair Practices Code
+        if any(w in lower for w in ["recovery agent", "threatening", "threaten", "harass", "intimidation", "calling contacts", "loan app harassment", "calling relatives", "dlb", "lsp", "dla", "kfs", "cooling-off", "look-up"]):
+            subtopics.append("RBI Digital Lending Regulatory Framework 2022")
+            keywords.extend(["Digital Lending", "Key Fact Statement", "KFS", "Cooling-off Period", "Recovery Agents Code of Conduct", "Lending Service Provider"])
 
-        # 4. NEFT / RTGS / IMPS settlement & limits variations
-        if any(w in lower for w in ["neft", "rtgs", "fund transfer", "batch", "operating hours", "2 lakh", "minimum limit"]):
-            if "rtgs" in lower:
-                subtopics.append("Real Time Gross Settlement (RTGS)")
-            if "neft" in lower:
-                subtopics.append("National Electronic Funds Transfer (NEFT)")
+        # 4. Natural Calamities, Restructuring & Moratorium
+        if any(w in lower for w in ["calamity", "natural disaster", "flood", "earthquake", "cyclone", "drought", "calamities", "moratorium", "restructuring", "relief measures", "slbc", "utlbc", "loan relief"]):
+            subtopics.append("RBI Master Directions - Relief Measures by Banks in Areas Affected by Natural Calamities")
+            keywords.extend(["Natural Calamities", "Restructuring of Loans", "Moratorium", "Fresh Credit Facilities", "SLBC", "Relief Measures", "Calamity"])
 
-        # 5. SEBI LODR / Materiality disclosure variations
-        if any(w in lower for w in ["lodr", "material event", "disclosure timeline", "regulation 30", "related party"]):
+        # 5. Failed Transactions, ATM Cash Not Dispensed, Return Timelines & Customer Compensation
+        if any(w in lower for w in ["atm", "cash not", "give cash", "money debited", "cash not received", "failed transaction", "delayed credit", "delayed return", "tat compensation", "rs 100 per day", "compensation policy", "wrong account", "mistakenly", "wrong beneficiary"]):
+            subtopics.append("IDFC Customer Compensation & Grievance Redressal Policy")
+            keywords.extend(["Customer Compensation Policy", "Turn Around Time TAT", "Failed ATM Transactions", "Erroneous Credit Reversal", "NEFT RTGS Return Timeline", "ATM Transactions"])
+
+        # 6. Fraud, Lost/Stolen Cards & Limiting Customer Liability
+        if any(w in lower for w in ["fraud", "unauthorized", "unauthorised", "stolen card", "lost card", "card skimmed", "otp scam", "zero liability", "customer liability", "third party breach", "delayed reporting"]):
+            subtopics.append("RBI Customer Protection - Limiting Liability in Unauthorized Electronic Transactions")
+            keywords.extend(["Limiting Liability of Customers", "Unauthorized Electronic Banking Transactions", "Zero Liability", "Third Party Breach", "Reporting Within 3 Days"])
+
+        # 7. KYC, Officially Valid Documents (OVD), Video KYC (V-CIP) & Updation Timelines
+        if any(w in lower for w in ["kyc", "know your customer", "v-cip", "vcip", "video kyc", "ovd", "officially valid document", "aadhaar", "passport", "voter id", "driving license", "periodic kyc", "high risk 2 years", "low risk 10 years"]):
+            subtopics.append("RBI Master Direction - Know Your Customer (KYC) Direction, 2016")
+            keywords.extend(["Know Your Customer KYC", "Video-based Customer Identification Process V-CIP", "Officially Valid Documents OVD", "Periodic KYC Updation", "Risk Categorization"])
+
+        # 8. Deposits, Savings Account Interest & Zero Balance (BSBDA)
+        if any(w in lower for w in ["interest on deposit", "savings account interest", "interest calculation", "daily product", "quarterly interest", "zero balance", "bsbda", "basic savings bank", "minimum balance", "inoperative", "dormant", "unclaimed deposit", "fixed deposit", "recurring deposit"]):
+            subtopics.append("RBI Master Direction - Interest Rate on Deposits & IDFC Savings Account Policy")
+            keywords.extend(["Interest Rate on Deposits", "Savings Account Benefits", "Basic Savings Bank Deposit Account BSBDA", "Inoperative Dormant Accounts", "Fixed Deposit"])
+
+        # 9. FASTag Program Rules, Auto-Recharge & Dispute Resolution
+        if any(w in lower for w in ["fastag", "auto recharge", "toll deduction", "duplicate toll", "tag blacklist", "netc", "toll plaza dispute"]):
+            subtopics.append("IDFC FASTag Program Rules & Auto Recharge")
+            keywords.extend(["FASTag Program Rules", "Auto Recharge", "RFID Electronic Toll", "Chargeback Dispute Resolution", "NETC Guidelines"])
+
+        # 10. NEFT / RTGS / IMPS / UPI Guidelines
+        if any(w in lower for w in ["neft", "rtgs", "fund transfer", "settlement batch", "24x7", "2 lakh minimum", "operating hours", "imps", "upi"]):
+            subtopics.append("RBI NEFT & RTGS Procedural Guidelines")
+            keywords.extend(["NEFT Procedural Guidelines", "RTGS Settlement", "48 Settlement Batches", "24x7 Round the Clock"])
+
+        # 11. Grievance Redressal & Banking Ombudsman
+        if any(w in lower for w in ["ombudsman", "grievance", "complaint escalation", "nodal officer", "complaint not resolved", "30 days resolution", "banking ombudsman"]):
+            subtopics.append("IDFC Grievance Redressal & RBI Integrated Ombudsman Scheme")
+            keywords.extend(["Grievance Redressal Mechanism", "Internal Ombudsman", "Banking Ombudsman Scheme", "30 Days Resolution Timeline"])
+
+        # 12. SEBI LODR Regulation 30 Material Disclosures
+        if any(w in lower for w in ["lodr", "material event", "disclosure timeline", "regulation 30", "related party", "sebi disclosure", "insider trading"]):
             subtopics.append("SEBI LODR Regulation 30 Disclosures")
+            keywords.extend(["SEBI LODR Regulation 30", "Material Events Disclosures", "24 Hours Timeline", "Listing Obligations"])
 
-        # 6. IRDAI Cyber Security & Policyholder protection
-        if any(w in lower for w in ["irdai", "free look", "ciso", "cyber incident", "localization"]):
-            subtopics.append("IRDAI Regulatory Guidelines")
+        # 13. IRDAI Cyber Security & Policyholder Protection
+        if any(w in lower for w in ["irdai", "free look", "ciso", "cyber incident", "policyholder protection", "customer information sheet", "cis", "insurance cancel"]):
+            subtopics.append("IRDAI Cyber Security Guidelines & Policyholder Protection Regulations 2024")
+            keywords.extend(["IRDAI Policyholder Protection", "30 Days Free Look Period", "CISO Cyber Incident Reporting 6 Hours", "Customer Information Sheet CIS"])
 
-        return query, subtopics
+        return query, subtopics, list(set(keywords))
+
+    resolve_coreference = resolve_pronouns_and_coreference
 
     def process_query(
         self,
         query: str,
         conversation_history: Optional[List[Dict[str, Any]]] = None,
-        user_name: Optional[str] = None
+        user_name: Optional[str] = None,
+        has_attachment: bool = False
     ) -> Dict[str, Any]:
         """
         Complete query understanding pipeline:
@@ -712,8 +788,9 @@ class NLPEngine:
         2. Normalize Hinglish / colloquial phrasing & jumbled query structures.
         3. Coreference / pronoun resolution against conversation history.
         4. Entity extraction & canonical subtopic mapping.
-        5. Query intent classification for precise answer synthesis.
-        6. Extract temporal compliance dates and regulator scopes.
+        5. Universal domain concept expansion for robust retrieval.
+        6. Query intent classification for precise answer synthesis.
+        7. Extract temporal compliance dates and regulator scopes.
         """
         conversation_history = conversation_history or []
         original_query = query.strip()
@@ -724,6 +801,8 @@ class NLPEngine:
             return {
                 "original_query": original_query,
                 "normalized_query": original_query,
+                "canonical_search_terms": original_query,
+                "expanded_concepts": [],
                 "resolved_entities": [],
                 "extracted_entities": [],
                 "clarification_needed": False,
@@ -740,11 +819,11 @@ class NLPEngine:
         # Step 2: Normalize Hinglish, Banking Acronym Aliases & Jumbled Patterns
         hinglish_normalized = self.normalize_hinglish(target_query)
         acronym_normalized = self.normalize_acronym_aliases(hinglish_normalized)
-        _, jumbled_subtopics = self.normalize_jumbled_descriptive_query(acronym_normalized)
+        _, jumbled_subtopics, canonical_keywords = self.normalize_jumbled_descriptive_query(acronym_normalized)
 
         # Step 3: Coreference resolution
-        resolved_query, resolved_entities, clarification_needed = self.resolve_coreference(
-            acronym_normalized, conversation_history
+        resolved_query, resolved_entities, clarification_needed = self.resolve_pronouns_and_coreference(
+            acronym_normalized, conversation_history, has_attachment=has_attachment
         )
 
         # Step 4: Extract entities and merge subtopics
@@ -756,6 +835,12 @@ class NLPEngine:
             jumbled_subtopics
         ))
 
+        # Build high-signal canonical search query
+        enriched_search_parts = [resolved_query]
+        if canonical_keywords:
+            enriched_search_parts.append(" ".join(canonical_keywords[:6]))
+        canonical_search_terms = " ".join(enriched_search_parts).strip()
+
         # Step 5: Semantic Intent Analysis
         intent_info = self.analyze_query_intent(resolved_query)
 
@@ -765,6 +850,8 @@ class NLPEngine:
         return {
             "original_query": original_query,
             "normalized_query": resolved_query,
+            "canonical_search_terms": canonical_search_terms,
+            "expanded_concepts": jumbled_subtopics,
             "resolved_entities": all_resolved_names,
             "extracted_entities": entities,
             "clarification_needed": clarification_needed,
@@ -777,5 +864,6 @@ class NLPEngine:
         }
 
 nlp_engine = NLPEngine()
+
 
 

@@ -113,8 +113,8 @@ class TwoLayerRAGEngine:
         generic_words = {
             "what", "is", "the", "are", "of", "and", "in", "to", "for", "a", "an",
             "tell", "me", "about", "how", "can", "does", "do", "i", "we", "you",
-            "please", "give", "details", "rules", "guidelines", "kya", "hai", "ka",
-            "explain", "show", "find", "in", "years", "months", "days", "time",
+            "please", "give", "details", "rules", "guidelines", "guideline", "guide", "line",
+            "kya", "hai", "ka", "explain", "show", "find", "in", "years", "months", "days", "time",
             "else", "needed", "required", "this", "that", "more", "bank", "banking",
             "rbi", "policy", "norm", "norms", "circular", "direction", "directions",
             "information", "procedure", "process", "say", "according", "document", "approved",
@@ -126,7 +126,8 @@ class TwoLayerRAGEngine:
             "term", "person", "needs", "need", "physically", "present", "presence",
             "video", "authenticating", "authentication", "authenticate", "etc", "style",
             "type", "kind", "means", "meaning", "definition", "understand", "reply",
-            "jumbled", "straight", "direct", "keywords", "differently", "different"
+            "jumbled", "straight", "direct", "keywords", "differently", "different",
+            "new", "updated", "update", "latest", "rule", "rules", "guidelines", "whats", "what's"
         }
 
         chunk_lower = chunk_text.lower()
@@ -157,24 +158,51 @@ class TwoLayerRAGEngine:
             if "cooling-off" not in chunk_lower and "look-up" not in chunk_lower:
                 return False
 
-        # 3. Direct Core Regulatory Acronym / Concept Match (e.g. KYC, V-CIP, OVD, NEFT, RTGS, IMPS, UPI, LODR, KFS)
+        # 3. Direct Core Regulatory Acronym & Domain Concept Match Across All Banking Topics
         core_domain_matches = [
+            # Loans & LTV
             ("kyc", "kyc"), ("v-cip", "v-cip"), ("vcip", "v-cip"), ("ovd", "ovd"),
             ("neft", "neft"), ("rtgs", "rtgs"), ("imps", "imps"), ("upi", "upi"),
             ("lodr", "lodr"), ("kfs", "kfs"), ("fastag", "fastag"), ("cibil", "cibil"),
-            ("npa", "npa"), ("ltv", "ltv"), ("crr", "crr"), ("slr", "slr")
+            ("npa", "npa"), ("ltv", "ltv"), ("crr", "crr"), ("slr", "slr"),
+            ("housing loan", "housing"), ("housing", "housing"), ("home loan", "housing"),
+            ("home loan", "ltv"), ("house loan", "housing"), ("property loan", "housing"),
+            # Foreclosure & Lending
+            ("foreclosure", "foreclosure"), ("prepayment", "prepayment"), ("prepayment", "foreclosure"),
+            ("close loan", "foreclosure"), ("close loan", "prepayment"), ("floating rate", "floating"),
+            # Calamity & Moratorium
+            ("calamity", "calamity"), ("natural calamity", "calamity"), ("moratorium", "moratorium"),
+            ("stressed assets", "stressed assets"), ("restructuring", "restructuring"),
+            ("flood", "calamity"), ("flood", "relief"), ("earthquake", "calamity"), ("disaster", "calamity"),
+            ("loan relief", "relief"), ("relief measures", "relief"),
+            # Deposits & Accounts
+            ("interest rate", "interest"), ("deposit", "deposit"), ("savings account", "savings"),
+            ("bsbda", "bsbda"), ("zero balance", "balance"), ("minimum balance", "balance"),
+            ("dormant", "inoperative"), ("inoperative", "inoperative"), ("fixed deposit", "fixed deposit"),
+            # Digital Lending & Grievance & ATM
+            ("digital lending", "digital lending"), ("recovery agent", "recovery"), ("recovery agent", "fair lending"),
+            ("ombudsman", "ombudsman"), ("grievance", "grievance"), ("compensation", "compensation"),
+            ("tat", "tat"), ("tat", "turnaround"), ("turnaround", "turnaround"),
+            ("atm", "atm"), ("atm", "compensation"), ("cash", "atm"), ("cash", "compensation"),
+            # SEBI & IRDAI
+            ("sebi", "sebi"), ("regulation 30", "regulation 30"), ("material event", "material"),
+            ("irdai", "irdai"), ("policyholder", "policyholder"), ("free look", "free look")
         ]
         for q_term, c_term in core_domain_matches:
             if re.search(rf"\b{re.escape(q_term)}\b", query_lower) and (c_term in chunk_lower or q_term in chunk_lower):
                 return True
 
         # 4. Situational Banking Scenario Matches
-        if any(w in query_lower for w in ["fraud", "stolen", "unauthorized", "unauthorised", "lost card"]):
-            if any(w in chunk_lower for w in ["unauthorised", "unauthorized", "liability", "third party", "negligence", "customer protection"]):
+        if any(w in query_lower for w in ["fraud", "stolen", "unauthorized", "unauthorised", "lost card", "card stolen", "scam"]):
+            if any(w in chunk_lower for w in ["unauthorised", "unauthorized", "liability", "third party", "negligence", "customer protection", "electronic"]):
                 return True
 
-        if any(w in query_lower for w in ["wrong account", "mistakenly", "mitakenly", "galat account", "erroneous"]):
+        if any(w in query_lower for w in ["wrong account", "mistakenly", "mitakenly", "galat account", "erroneous", "wrong beneficiary"]):
             if any(w in chunk_lower for w in ["neft", "rtgs", "beneficiary", "return", "remitter", "compensation", "turnaround"]):
+                return True
+
+        if any(w in query_lower for w in ["atm failed", "cash not dispensed", "cash not received", "money cut", "money debited"]):
+            if any(w in chunk_lower for w in ["compensation", "atm", "tat", "turnaround", "failed", "reversal"]):
                 return True
 
         # 5. Explicit Circular / Notification Code Matching
@@ -201,13 +229,15 @@ class TwoLayerRAGEngine:
 
     def check_conflicting_chunks(self, kb_chunks: List[Dict[str, Any]]) -> Optional[str]:
         """
-        Detects if multiple retrieved approved documents offer differing or conflicting rules/versions.
+        Detects if multiple retrieved approved official regulatory documents offer differing or conflicting rules/versions.
+        Never treats user attachments as conflicting official sources.
         """
-        if len(kb_chunks) < 2:
+        official_chunks = [c for c in kb_chunks if c.get("source") != "USER_ATTACHMENT"]
+        if len(official_chunks) < 2:
             return None
 
-        doc_a = kb_chunks[0]
-        doc_b = kb_chunks[1]
+        doc_a = official_chunks[0]
+        doc_b = official_chunks[1]
 
         if doc_a.get("document_id") != doc_b.get("document_id") and doc_a.get("score", 0) >= 0.35 and doc_b.get("score", 0) >= 0.35:
             text_a = doc_a.get("chunk_text", "").strip()
@@ -315,8 +345,23 @@ class TwoLayerRAGEngine:
                 doc_text = att_chunk.get("chunk_text", "").strip()
                 q_lower = query.lower()
 
+                # Document Identity / Classification Query (e.g., "is this a rbi doc", "is this an rbi document")
+                is_identity_query = bool(re.search(r"\b(is this a\b|is this an\b|is this)\s*(?:an?\s*)?(?:rbi|sebi|irdai|official|bank|policy)\s*(?:doc|document|circular|guideline)?\b", q_lower))
+                if is_identity_query or "is this a rbi" in q_lower or "is this an rbi" in q_lower:
+                    has_rbi_marker = bool(re.search(r"\b(reserve bank of india|rbi/|dor\.|dbr\.|dpss\.|master direction|banking regulation act)\b", doc_text, re.IGNORECASE))
+                    if not has_rbi_marker:
+                        first_line = doc_text.split("\n")[0].strip() if doc_text else fname
+                        preview_intro = " ".join([p.strip() for p in doc_text.split("\n\n") if len(p.strip()) > 10][:2])[:250]
+                        return (
+                            f"**No, this is not an official RBI document.**\n\n"
+                            f"Based on the attached file **{fname}**, this document appears to be: **{first_line}**.\n\n"
+                            f"> {preview_intro}...\n\n"
+                            f"It does not contain official Reserve Bank of India (RBI) notifications, circular numbers, or statutory banking directives.\n\n"
+                            f"*Source: User Attachment **{fname}***"
+                        )
+
                 # Compliance / RBI comparison intent
-                is_compliance_check = any(w in q_lower for w in ["match", "matches", "comply", "compliance", "rbi", "guideline", "guidelines", "rule", "rules", "violate", "violation", "valid", "check"])
+                is_compliance_check = any(w in q_lower for w in ["match", "matches", "comply", "compliance", "violate", "violation", "validate against", "compare against"])
                 if is_compliance_check:
                     official_chunks = [c for c in matching_chunks if c.get("source") != "USER_ATTACHMENT"]
                     ref_doc_name = official_chunks[0].get("doc_title") if official_chunks else "RBI Master Directions"
@@ -523,7 +568,8 @@ class TwoLayerRAGEngine:
                 })
 
         # Step 1: NLP Preprocessing, Conversational Chitchat & Coreference
-        nlp_res = nlp_engine.process_query(raw_query, conversation_history=history_msgs, user_name=user_name)
+        has_att = bool(attachment_context and (attachment_context.get("extracted_text") or attachment_context.get("filename")))
+        nlp_res = nlp_engine.process_query(raw_query, conversation_history=history_msgs, user_name=user_name, has_attachment=has_att)
 
         # Handle Conversational Chitchat (Greetings, Slang, Thanks, Identity, Emotional check-in)
         if nlp_res.get("is_chitchat") and nlp_res.get("chitchat_response"):
@@ -648,6 +694,8 @@ class TwoLayerRAGEngine:
                 "tokens_used": {"tokens_input": 50, "tokens_output": 25, "tokens_total": 75}
             }
 
+        canonical_search_terms = nlp_res.get("canonical_search_terms") or normalized_query
+
         # Step 2: Layer 1 — Conversation DB RAG
         conv_matches = self.search_conversation_memory(
             db, user_id, conversation_id, normalized_query, extracted_entities
@@ -673,19 +721,21 @@ class TwoLayerRAGEngine:
             regulator_filter=active_regulators,
             as_of_date=active_as_of_date,
             tenant_id=tenant_id,
-            db=db
+            db=db,
+            canonical_search_terms=canonical_search_terms
         )
 
-        # Fallback to pure normalized_query if enriched search returned empty
-        if not raw_kb_chunks and search_query != normalized_query:
+        # Fallback to pure canonical_search_terms if enriched search returned empty
+        if not raw_kb_chunks and search_query != canonical_search_terms:
             raw_kb_chunks = hybrid_vector_store.search(
-                normalized_query,
+                canonical_search_terms,
                 top_k=settings.TOP_K_CHUNKS + 2,
                 threshold=settings.RETRIEVAL_THRESHOLD,
                 regulator_filter=active_regulators,
                 as_of_date=active_as_of_date,
                 tenant_id=tenant_id,
-                db=db
+                db=db,
+                canonical_search_terms=canonical_search_terms
             )
 
         # Apply Answerability Validation

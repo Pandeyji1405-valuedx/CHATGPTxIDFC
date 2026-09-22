@@ -216,4 +216,44 @@ def test_chat_attachment_advisory_email_drafting_instruction(client, auth_header
     ans = chat_data["answer"]
     assert any(w in ans.lower() for w in ["branch manager", "dear", "subject", "remediation", "kyc", "15", "ovd", "accounts"])
 
+def test_attachment_document_identity_and_no_false_conflict(client, auth_headers_user1):
+    """Verifies that asking 'is this a rbi doc' with an uploaded third-party guide correctly resolves intent and answers without false conflict."""
+    # Step 1: Create a conversation and ask a previous turn about KYC
+    conv_res = client.post("/api/conversations", json={"title": "Doc Identity Check"}, headers=auth_headers_user1)
+    assert conv_res.status_code == 201
+    conv_id = conv_res.json()["id"]
+
+    # Ask turn 1 about KYC
+    t1 = client.post("/api/chat", json={
+        "conversation_id": conv_id,
+        "query": "What is KYC?"
+    }, headers=auth_headers_user1)
+    assert t1.status_code == 200
+
+    # Step 2: Upload third-party study guide
+    file_content = b"BEGINNER-FRIENDLY STUDY GUIDE SupportFlo Understanding the Platform Architecture, Step by Step SupportFlo reads, thinks, and proposes; people and policy decide; a separate engine does the work; then SupportFlo checks what happened."
+    file_obj = io.BytesIO(file_content)
+
+    upload_res = client.post(
+        "/api/chat/upload-attachment",
+        files={"file": ("SupportFlo_Beginner_Guide_Updated.pdf", file_obj, "application/pdf")},
+        headers=auth_headers_user1
+    )
+    assert upload_res.status_code == 200
+    att = upload_res.json()["attachment"]
+
+    # Step 3: Ask 'is this a rbi doc' in the same conversation
+    t2 = client.post("/api/chat", json={
+        "conversation_id": conv_id,
+        "query": "is this a rbi doc",
+        "attachment": att
+    }, headers=auth_headers_user1)
+    assert t2.status_code == 200
+    data = t2.json()
+    assert data["source_type"] == "ATTACHMENT_ANALYSIS"
+    assert "is this a rbi doc" in data["normalized_query"].lower()
+    assert "conflicting information" not in data["answer"].lower()
+    assert any(phrase in data["answer"].lower() for phrase in ["not an rbi document", "not a rbi document", "supportflo", "study guide"])
+
+
 

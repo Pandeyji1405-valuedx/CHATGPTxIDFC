@@ -62,7 +62,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Include API Routers
 app.include_router(auth_router.router)
+app.include_router(auth_router.user_memory_router)
 app.include_router(conversations_router.router)
+app.include_router(conversations_router.share_router)
 app.include_router(chat_router.router)
 app.include_router(admin_router.router)
 app.include_router(speech_router.router)

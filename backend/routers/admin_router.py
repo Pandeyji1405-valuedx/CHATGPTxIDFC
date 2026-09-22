@@ -10,13 +10,14 @@ from backend.database import get_db
 from backend.models import User, KnowledgeDocument, KnowledgeChunk, AuditLog, Response, FeedbackItem, get_utc_now
 from backend.schemas import (
     KnowledgeDocumentResponse, DocumentDetailResponse, IngestionSummaryResponse,
-    ConsumptionMISResponse, SupersedeDocumentRequest
+    ConsumptionMISResponse, SupersedeDocumentRequest, ScrapeRBIRequest, ScrapeRBIResponse
 )
 from backend.auth import get_current_admin
 from backend.config import settings
 from backend.ingestion.extractor import document_extractor
 from backend.ingestion.chunker import document_chunker
 from backend.ingestion.ocr_engine import ocr_engine
+from backend.ingestion.rbi_notification_scraper import rbi_notification_scraper
 from backend.rag.vector_store import hybrid_vector_store
 
 router = APIRouter(prefix="/api/admin", tags=["Knowledge Base Administration & MIS"])
@@ -548,3 +549,59 @@ def get_consumption_summary(
         queries_by_regulator={"RBI": total_responses, "SEBI": 0, "IRDAI": 0, "INTERNAL": 0},
         feedback_by_category=fb_by_cat
     )
+
+@router.post("/scrape/rbi", response_model=ScrapeRBIResponse)
+def trigger_rbi_scraping(
+    req: ScrapeRBIRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Triggers automated web scraping of RBI notifications, Master Directions,
+    and attached official PDFs with dynamic JavaScript rendering via Selenium,
+    and indexes them into the knowledge base.
+    """
+    target_url = req.url or "https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=13412&Mode=0"
+    try:
+        scrape_result = rbi_notification_scraper.execute_complete_scrape(
+            target_url=target_url,
+            use_selenium=bool(req.use_selenium),
+            explore_sublinks=bool(req.explore_sublinks),
+            explore_navigations=bool(req.explore_navigations),
+            max_nav_items=req.max_nav_items or 10
+        )
+        
+        total_docs = db.query(KnowledgeDocument).count()
+        total_chunks = db.query(KnowledgeChunk).count()
+
+        # Audit log
+        audit = AuditLog(
+            user_id=current_admin.id,
+            action="SCRAPE_AND_INGEST",
+            details_json=json.dumps({
+                "target_url": target_url,
+                "used_selenium": scrape_result.get("used_selenium", False),
+                "scraped_count": scrape_result.get("total_documents_scraped", 0),
+                "total_kb_docs": total_docs
+            })
+        )
+        db.add(audit)
+        db.commit()
+
+        return ScrapeRBIResponse(
+            status=scrape_result.get("status", "success"),
+            target_url=target_url,
+            used_selenium=scrape_result.get("used_selenium", True),
+            total_documents_scraped=scrape_result.get("total_documents_scraped", 0),
+            total_urls_visited=scrape_result.get("total_urls_visited", 0),
+            documents=scrape_result.get("documents", []),
+            total_knowledge_base_documents=total_docs,
+            total_knowledge_base_chunks=total_chunks
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"RBI scraping failed: {str(e)}"
+        )
+

@@ -2445,3 +2445,129 @@ body.light-theme .modal-overlay {
   background-color: #ffffff;
   padding: 1px 3px;
 }
+
+/* ==================== SETTINGS TABS & PERSONAL MEMORY (FR-18) ==================== */
+.settings-tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-tab-btn:hover {
+  background: var(--item-hover);
+  color: var(--text-primary);
+}
+
+.settings-tab-btn.active {
+  background: var(--composer-surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.user-memory-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--composer-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.user-memory-card:hover {
+  border-color: var(--border-medium);
+}
+
+.memory-category-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+  margin-right: 6px;
+}
+
+.memory-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.memory-delete-btn:hover {
+  color: var(--badge-red);
+  background: var(--badge-red-bg);
+}
+
+/* ==================== VISUAL PASSAGE VIEWER (FR-09) ==================== */
+.passage-viewer-content {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.passage-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.badge-active {
+  background: var(--badge-green-bg);
+  color: var(--badge-green);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.badge-secondary {
+  background: var(--composer-surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+}
+
+.passage-highlight-box {
+  background: var(--sidebar-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  max-height: 380px;
+  overflow-y: auto;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  position: relative;
+}
+
+.passage-highlight-box mark {
+  background: rgba(227, 160, 24, 0.25);
+  color: #fbbf24;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border-bottom: 2px solid #f59e0b;
+  font-weight: 600;
+}
+

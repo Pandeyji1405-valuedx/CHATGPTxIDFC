@@ -40,6 +40,7 @@ class HybridVectorStore:
         - Specific percentage figures (e.g. 40%, 80%, 90%, 10%)
         - Specific days/timelines (e.g. 30 days, 3 days, 6 hours, 12 hours)
         - Financial regulator acronyms & terms
+        - Universal domain topic scenarios
         """
         boost = 0.0
         text = chunk.get("chunk_text", "").upper()
@@ -68,6 +69,7 @@ class HybridVectorStore:
             "CUSTOMER PROTECTION", "UNAUTHORISED", "UNAUTHORIZED", "INTEREST RATE",
             "DEPOSIT", "INOPERATIVE", "MICROFINANCE", "PRIORITY SECTOR", "PSL", "SANCTION",
             "SAVINGS", "CURRENT ACCOUNT", "V-CIP", "KEY FACT STATEMENT", "KFS", "COOLING-OFF",
+            "BSBDA", "BASIC SAVINGS", "MORATORIUM", "FORECLOSURE", "PREPAYMENT",
             # SEBI Terms
             "LODR", "LISTING OBLIGATIONS", "DISCLOSURE", "MATERIAL EVENT", "RELATED PARTY",
             "INSIDER TRADING", "PIT", "VAPT", "PENETRATION TESTING", "STOCK BROKER",
@@ -82,17 +84,65 @@ class HybridVectorStore:
                 if re.search(rf"\b{re.escape(term)}\b", text) or re.search(rf"\b{re.escape(term)}\b", doc_title):
                     boost += 0.25
 
-        # Situational Banking Scenarios Boost
-        if re.search(r"\b(STOLEN|LOST CARD|CARD STOLEN|FRAUD|SCAM|UNAUTHORIZED|UNAUTHORISED|COMPROMISED|MISUSED)\b", query_upper):
+        # Universal Domain Scenarios Boosting:
+        # 1. Stolen / Lost Card / Fraud / Unauthorized Transactions
+        if re.search(r"\b(STOLEN|LOST CARD|CARD STOLEN|FRAUD|SCAM|UNAUTHORIZED|UNAUTHORISED|COMPROMISED|MISUSED|SKIMMING)\b", query_upper):
             if "UNAUTHORISED" in doc_title or "UNAUTHORIZED" in doc_title or "CUSTOMER PROTECTION" in doc_title or "LIABILITY" in doc_title:
                 boost += 0.45
 
+        # 2. Erroneous / Wrong Account Transfers
         if re.search(r"\b(WRONG ACCOUNT|WRONG BENEFICIARY|MISTAKENLY|MITAKENLY|ERRONEOUS|WRONGLY|ACCIDENTALLY)\b", query_upper):
             if "NEFT" in doc_title or "COMPENSATION" in doc_title or "RTGS" in doc_title or "RETURN" in text:
                 boost += 0.45
 
-        if re.search(r"\b(DELAYED|FAILED TRANSACTION|NOT RECEIVED|DEBITED BUT|STUCK|ATM FAILED|GRIEVANCE|COMPLAINT|DISPUTE)\b", query_upper):
+        # 3. Failed Transactions / Delayed Reversal / Compensation TAT
+        if re.search(r"\b(DELAYED|FAILED TRANSACTION|NOT RECEIVED|DEBITED BUT|STUCK|ATM FAILED|CASH NOT DISPENSED|GRIEVANCE|COMPLAINT|DISPUTE|COMPENSATION)\b", query_upper):
             if "COMPENSATION" in doc_title or "GRIEVANCE" in doc_title or "TURNAROUND" in text:
+                boost += 0.45
+
+        # 4. Housing / Home Loans / LTV Slabs
+        if re.search(r"\b(HOUSING|HOME LOAN|HOME LAON|HOUSE LOAN|LTV|MORTGAGE|HOUSING FINANCE|DWELLING|FLAT LOAN|BUY HOUSE)\b", query_upper):
+            if "HOUSING" in doc_title or "LTV" in doc_title or "HOUSING" in text or "LTV" in text:
+                boost += 0.45
+
+        # 5. Foreclosure / Prepayment Penalty / Floating Rate Term Loans
+        if re.search(r"\b(FORECLOSURE|PREPAYMENT|PREPAY|CLOSE LOAN|CLOSING LOAN|FLOATING RATE|PART PAYMENT)\b", query_upper):
+            if "FAIR LENDING" in doc_title or "FORECLOSURE" in doc_title or "PREPAYMENT" in text or "FORECLOSURE" in text:
+                boost += 0.45
+
+        # 6. Natural Calamities Relief / Moratorium / Stressed Assets
+        if re.search(r"\b(CALAMITY|CALAMITIES|NATURAL CALAMITY|DISASTER|FLOOD|EARTHQUAKE|STRESSED ASSETS|SLBC|UTLBC|DCC|MORATORIUM)\b", query_upper):
+            if "CALAMITY" in text or "STRESSED ASSETS" in doc_title or "CALAMITIES" in text or "CALAMITIES" in doc_title:
+                boost += 0.45
+
+        # 7. Savings Account / Interest on Deposits / BSBDA / Minimum Balance
+        if re.search(r"\b(SAVINGS ACCOUNT|INTEREST RATE ON DEPOSIT|SAVINGS INTEREST|BSBDA|ZERO BALANCE|MINIMUM BALANCE|INOPERATIVE|DORMANT|FIXED DEPOSIT|RECURRING DEPOSIT)\b", query_upper):
+            if "INTEREST RATE ON DEPOSITS" in doc_title or "SAVINGS ACCOUNT" in doc_title or "DEPOSITS" in doc_title or "INTEREST" in text:
+                boost += 0.45
+
+        # 8. Digital Lending / KFS / Cooling-off / Recovery Agent Conduct
+        if re.search(r"\b(DIGITAL LENDING|RECOVERY AGENT|HARASS|THREATEN|INTIMIDATION|KFS|KEY FACT|COOLING-OFF|LOOK-UP|LSP|DLA)\b", query_upper):
+            if "DIGITAL LENDING" in doc_title or "FAIR LENDING" in doc_title or "DIGITAL LENDING" in text:
+                boost += 0.45
+
+        # 9. FASTag Program / Auto-Recharge / Toll Plaza Disputes
+        if re.search(r"\b(FASTAG|AUTO RECHARGE|TOLL|RFID|TAG BLACKLIST|DUPLICATE TOLL)\b", query_upper):
+            if "FASTAG" in doc_title or "AUTO RECHARGE" in doc_title or "FASTAG" in text:
+                boost += 0.45
+
+        # 10. Grievance Redressal & Banking Ombudsman
+        if re.search(r"\b(OMBUDSMAN|GRIEVANCE|NODAL OFFICER|COMPLAINT ESCALATION|INTERNAL OMBUDSMAN)\b", query_upper):
+            if "GRIEVANCE" in doc_title or "COMPENSATION" in doc_title or "OMBUDSMAN" in text:
+                boost += 0.45
+
+        # 11. IRDAI Cyber Security & Policyholder Protection (30-day Free Look)
+        if re.search(r"\b(IRDAI|FREE LOOK|POLICYHOLDER|CISO|CYBER INCIDENT|CUSTOMER INFORMATION SHEET|CIS)\b", query_upper):
+            if "IRDAI" in doc_title or "POLICYHOLDER" in doc_title or "CYBER SECURITY" in doc_title or "FREE LOOK" in text:
+                boost += 0.45
+
+        # 12. SEBI LODR Regulation 30 Material Disclosures
+        if re.search(r"\b(SEBI|LODR|REGULATION 30|MATERIAL EVENT|MATERIAL DISCLOSURE|MATERIALITY|THRESHOLDS?|TURNOVER|NET WORTH)\b", query_upper):
+            if "SEBI" in doc_title or "LODR" in doc_title or "REGULATION 30" in text or "MATERIAL" in text or "TURNOVER" in text or "NET WORTH" in text:
                 boost += 0.45
 
         # Check document title word overlap
@@ -173,10 +223,12 @@ class HybridVectorStore:
         regulator_filter: Optional[List[str]] = None,
         as_of_date: Optional[str] = None,
         tenant_id: str = "default_tenant",
-        db: Any = None
+        db: Any = None,
+        canonical_search_terms: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Performs hybrid semantic and keyword search with:
+        - Multi-query representation scoring (raw query + canonical domain concepts)
         - Regulator filtering (RBI, SEBI, IRDAI, INTERNAL)
         - Effective-date temporal range validation
         - Active vs Superseded status resolution
@@ -192,8 +244,16 @@ class HybridVectorStore:
             return []
 
         min_threshold = threshold if threshold is not None else settings.RETRIEVAL_THRESHOLD
+        
+        # Compute primary similarity
         query_vector = self.vectorizer.transform([query])
         similarities = cosine_similarity(query_vector, self.tfidf_matrix)[0]
+
+        # If canonical search terms exist, merge similarity scores
+        if canonical_search_terms and canonical_search_terms.strip() and canonical_search_terms.strip() != query.strip():
+            canonical_vec = self.vectorizer.transform([canonical_search_terms])
+            canonical_sims = cosine_similarity(canonical_vec, self.tfidf_matrix)[0]
+            similarities = np.maximum(similarities, canonical_sims * 0.95)
 
         normalized_reg_filter = [r.upper() for r in regulator_filter] if regulator_filter else ["ALL"]
         if "ALL" in normalized_reg_filter:
@@ -205,9 +265,9 @@ class HybridVectorStore:
         for idx, base_score in enumerate(similarities):
             chunk = self.chunk_records[idx]
 
-            # 1. Tenant Check
+            # 1. Tenant Check (Approved default_tenant KB is accessible across all tenants; private tenant chunks are strictly isolated)
             chunk_tenant = chunk.get("tenant_id", "default_tenant")
-            if chunk_tenant != tenant_id and tenant_id != "default_tenant":
+            if chunk_tenant != "default_tenant" and tenant_id != "default_tenant" and chunk_tenant != tenant_id:
                 continue
 
             # 2. Regulator Filter Check
@@ -237,8 +297,9 @@ class HybridVectorStore:
                     continue
 
             # 4. Score Calculation
-            boost = self.calculate_structured_boost(query, chunk)
+            boost = self.calculate_structured_boost(canonical_search_terms or query, chunk)
             final_score = float(base_score) + boost
+
 
             if final_score >= min_threshold:
                 scored_results.append({
@@ -271,7 +332,7 @@ class HybridVectorStore:
         for res in scored_results:
             doc_key = str(res.get("document_id") or res.get("doc_title"))
             count = doc_chunk_count.get(doc_key, 0)
-            if count < 2:
+            if count < 4:
                 diverse_results.append(res)
                 doc_chunk_count[doc_key] = count + 1
             else:

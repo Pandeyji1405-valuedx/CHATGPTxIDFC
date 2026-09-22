@@ -171,7 +171,22 @@ const DOM = {
   settingsModal: document.getElementById("settings-modal"),
   settingSttReview: document.getElementById("setting-stt-review"),
   settingAutoTts: document.getElementById("setting-auto-tts"),
-  settingTtsRate: document.getElementById("setting-tts-rate")
+  settingTtsRate: document.getElementById("setting-tts-rate"),
+  tabBtnPref: document.getElementById("tab-btn-pref"),
+  tabBtnMemories: document.getElementById("tab-btn-memories"),
+  settingsTabGeneral: document.getElementById("settings-tab-general"),
+  settingsTabMemory: document.getElementById("settings-tab-memory"),
+  userMemoryList: document.getElementById("user-memory-list"),
+  btnClearAllMemories: document.getElementById("btn-clear-all-memories"),
+  // Share Chat (FR-24)
+  btnShareChat: document.getElementById("btn-share-chat"),
+  shareChatModal: document.getElementById("share-chat-modal"),
+  shareLinkInput: document.getElementById("share-link-input"),
+  btnCopyShareLink: document.getElementById("btn-copy-share-link"),
+  shareExpiresBadge: document.getElementById("share-expires-badge"),
+  // Enterprise SSO (FR-01)
+  landingBtnSso: document.getElementById("landing-btn-sso"),
+  btnSsoLogin: document.getElementById("btn-sso-login")
 };
 
 // ==================== TOAST & MODAL HELPERS ====================
@@ -534,6 +549,39 @@ async function googleLogin(email = "devesh.pandey1405@gmail.com", name = "devesh
     closeAllModals();
     hideLandingAuth();
     showToast(`Signed in as ${data.user.name}`);
+    await loadConversations();
+  } catch (err) {
+    showToast(err.message);
+    alert(err.message);
+  }
+}
+
+async function enterpriseSsoLogin(provider = "azure_ad", email = "compliance.officer@idfcbank.com", name = "IDFC Compliance Officer") {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/sso`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: provider,
+        email: email,
+        name: name,
+        tenant_domain: "idfcbank.com",
+        department: "Compliance & Regulatory Affairs"
+      })
+    });
+    if (!res.ok) throw new Error("Enterprise SSO authentication failed");
+    const data = await res.json();
+    sessionStorage.setItem("chatgptxidfc_session_authenticated", "true");
+    addAccount({
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      role: data.user.role,
+      token: data.access_token
+    });
+    closeAllModals();
+    hideLandingAuth();
+    showToast(`SSO Federated: Signed in as ${data.user.name} (${provider.toUpperCase()})`);
     await loadConversations();
   } catch (err) {
     showToast(err.message);
@@ -1893,10 +1941,164 @@ function initEventListeners() {
     });
   }
 
-  // Settings Modal
-  if (DOM.btnOpenSettings && DOM.settingsModal) {
-    DOM.btnOpenSettings.addEventListener("click", () => DOM.settingsModal.classList.remove("hidden"));
+  // ==================== SHARE CONVERSATION (FR-24) ====================
+  async function openShareModal() {
+    if (!state.currentConversationId) {
+      showToast("Please open a conversation to share");
+      return;
+    }
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/conversations/${state.currentConversationId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expires_in_hours: 72 })
+      });
+      if (!res.ok) throw new Error("Failed to generate share link");
+      const data = await res.json();
+      const fullUrl = `${window.location.origin}${data.share_url}`;
+      if (DOM.shareLinkInput) DOM.shareLinkInput.value = fullUrl;
+      if (DOM.shareExpiresBadge) DOM.shareExpiresBadge.innerHTML = `<i class="fa-regular fa-clock"></i> Valid until ${new Date(data.expires_at).toLocaleDateString()}`;
+      if (DOM.shareChatModal) DOM.shareChatModal.classList.remove("hidden");
+    } catch (err) {
+      showToast(err.message);
+    }
   }
+
+  function copyShareLink() {
+    if (!DOM.shareLinkInput || !DOM.shareLinkInput.value) return;
+    navigator.clipboard.writeText(DOM.shareLinkInput.value);
+    showToast("Shareable link copied to clipboard");
+    if (DOM.btnCopyShareLink) {
+      DOM.btnCopyShareLink.innerHTML = `<i class="fa-solid fa-check"></i> Copied!`;
+      setTimeout(() => {
+        if (DOM.btnCopyShareLink) DOM.btnCopyShareLink.innerHTML = `<i class="fa-solid fa-copy"></i> Copy Link`;
+      }, 2000);
+    }
+  }
+
+  // ==================== PERSONAL MEMORY USER CONTROLS (FR-18) ====================
+  async function loadUserMemories() {
+    if (!DOM.userMemoryList) return;
+    DOM.userMemoryList.innerHTML = `<div class="list-skeleton">Loading personal memories...</div>`;
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/user/memories`);
+      if (!res.ok) throw new Error("Failed to load user memories");
+      const data = await res.json();
+      renderUserMemories(data.memories || []);
+    } catch (err) {
+      DOM.userMemoryList.innerHTML = `<div style="font-size:13px;color:var(--text-muted);padding:8px;">Failed to load memories.</div>`;
+    }
+  }
+
+  function renderUserMemories(memories) {
+    if (!DOM.userMemoryList) return;
+    DOM.userMemoryList.innerHTML = "";
+    if (memories.length === 0) {
+      DOM.userMemoryList.innerHTML = `<div style="font-size:13px;color:var(--text-muted);padding:12px;text-align:center;">No stored personal context or preferences yet. Memory is recorded dynamically as you converse with explicit controls.</div>`;
+      return;
+    }
+
+    memories.forEach(m => {
+      const card = document.createElement("div");
+      card.className = "user-memory-card";
+      card.innerHTML = `
+        <div style="flex: 1; padding-right: 8px;">
+          <div>
+            <span class="memory-category-tag">${escapeHtml(m.category || 'CONTEXT')}</span>
+            <strong style="font-size: 13px;">${escapeHtml(m.key)}</strong>
+          </div>
+          <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 3px;">${escapeHtml(m.value)}</p>
+        </div>
+        <button class="memory-delete-btn" title="Delete this memory" data-key="${escapeHtml(m.key)}">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      `;
+
+      card.querySelector(".memory-delete-btn").addEventListener("click", async () => {
+        await deleteUserMemory(m.key);
+      });
+
+      DOM.userMemoryList.appendChild(card);
+    });
+  }
+
+  async function deleteUserMemory(key) {
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/user/memories/${encodeURIComponent(key)}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        showToast(`Memory deleted: ${key}`);
+        await loadUserMemories();
+      }
+    } catch (err) {
+      showToast("Failed to delete memory");
+    }
+  }
+
+  async function clearAllUserMemories() {
+    if (!confirm("Are you sure you want to clear all stored personal context and preferences?")) return;
+    try {
+      const res = await authenticatedFetch(`${API_BASE}/api/user/memories/clear`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        showToast("All personal memories cleared");
+        await loadUserMemories();
+      }
+    } catch (err) {
+      showToast("Failed to clear memories");
+    }
+  }
+
+  // Share Chat Triggers
+  if (DOM.btnShareChat) {
+    DOM.btnShareChat.addEventListener("click", openShareModal);
+  }
+  if (DOM.btnCopyShareLink) {
+    DOM.btnCopyShareLink.addEventListener("click", copyShareLink);
+  }
+
+  // Enterprise SSO Triggers
+  if (DOM.landingBtnSso) {
+    DOM.landingBtnSso.addEventListener("click", () => enterpriseSsoLogin("azure_ad"));
+  }
+  if (DOM.btnSsoLogin) {
+    DOM.btnSsoLogin.addEventListener("click", () => enterpriseSsoLogin("azure_ad"));
+  }
+
+  // Settings Modal & Tabs
+  if (DOM.btnOpenSettings && DOM.settingsModal) {
+    DOM.btnOpenSettings.addEventListener("click", () => {
+      DOM.settingsModal.classList.remove("hidden");
+      // Default to general tab
+      if (DOM.tabBtnPref) DOM.tabBtnPref.click();
+    });
+  }
+
+  if (DOM.tabBtnPref) {
+    DOM.tabBtnPref.addEventListener("click", () => {
+      DOM.tabBtnPref.classList.add("active");
+      if (DOM.tabBtnMemories) DOM.tabBtnMemories.classList.remove("active");
+      if (DOM.settingsTabGeneral) DOM.settingsTabGeneral.classList.remove("hidden");
+      if (DOM.settingsTabMemory) DOM.settingsTabMemory.classList.add("hidden");
+    });
+  }
+
+  if (DOM.tabBtnMemories) {
+    DOM.tabBtnMemories.addEventListener("click", () => {
+      DOM.tabBtnMemories.classList.add("active");
+      if (DOM.tabBtnPref) DOM.tabBtnPref.classList.remove("active");
+      if (DOM.settingsTabMemory) DOM.settingsTabMemory.classList.remove("hidden");
+      if (DOM.settingsTabGeneral) DOM.settingsTabGeneral.classList.add("hidden");
+      loadUserMemories();
+    });
+  }
+
+  if (DOM.btnClearAllMemories) {
+    DOM.btnClearAllMemories.addEventListener("click", clearAllUserMemories);
+  }
+
   if (DOM.settingSttReview) {
     DOM.settingSttReview.addEventListener("change", (e) => {
       state.sttReview = e.target.checked;

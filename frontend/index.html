@@ -51,16 +51,22 @@
         </div>
       </div>
 
-      <!-- SSO Google Button -->
-      <button id="landing-btn-google" class="btn-oauth landing-oauth-btn" type="button">
-        <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-        </svg>
-        Continue with Google
-      </button>
+      <!-- SSO Buttons Section -->
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button id="landing-btn-google" class="btn-oauth landing-oauth-btn" type="button">
+          <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          Continue with Google
+        </button>
+        <button id="landing-btn-sso" class="btn-oauth landing-oauth-btn" type="button" style="border-color: #991b1b; color: #991b1b;">
+          <i class="fa-solid fa-building-shield" style="font-size: 16px; margin-right: 8px;"></i>
+          Enterprise SSO (Azure AD / SAML 2.0)
+        </button>
+      </div>
 
       <div class="auth-divider"><span>OR</span></div>
 
@@ -238,6 +244,17 @@
             </svg>
             <span>Verified Knowledge</span>
           </div>
+
+          <!-- Share Chat Button (FR-24) -->
+          <button id="btn-share-chat" class="nav-icon-btn" title="Share read-only conversation snapshot (FR-24)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/>
+              <circle cx="6" cy="12" r="3"/>
+              <circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </button>
 
           <!-- Theme Toggle (Sun/Moon) -->
           <button id="btn-theme-toggle" class="nav-icon-btn" title="Toggle theme">
@@ -514,7 +531,7 @@
       </div>
 
       <!-- SSO OAuth Section -->
-      <div class="oauth-section">
+      <div class="oauth-section" style="display: flex; flex-direction: column; gap: 8px;">
         <button id="btn-google-login" class="btn-oauth">
           <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -523,6 +540,10 @@
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
           </svg>
           Continue with Google
+        </button>
+        <button id="btn-sso-login" class="btn-oauth" style="border-color: #991b1b; color: #991b1b;">
+          <i class="fa-solid fa-building-shield" style="font-size: 16px; margin-right: 8px;"></i>
+          Enterprise SSO (Azure AD / SAML 2.0)
         </button>
       </div>
 
@@ -791,47 +812,105 @@
 
   <!-- SETTINGS MODAL (TABBED CHATGPT MODAL) -->
   <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-card chatgpt-modal settings-dialog">
+    <div class="modal-card chatgpt-modal settings-dialog" style="max-width: 580px;">
       <button class="modal-close-btn" data-close="settings-modal">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6 6 18M6 6l12 12"/>
         </svg>
       </button>
-      <div class="modal-header" style="text-align: left; margin-bottom: 16px;">
+      <div class="modal-header" style="text-align: left; margin-bottom: 12px;">
         <h3>Settings</h3>
       </div>
 
-      <div class="settings-section">
-        <div class="setting-item">
-          <div>
-            <strong>Voice Input Review</strong>
-            <p>Review speech-to-text transcript before sending</p>
+      <div class="settings-tabs-nav" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; padding-bottom: 8px;">
+        <button id="tab-btn-pref" class="settings-tab-btn active" type="button">General</button>
+        <button id="tab-btn-memories" class="settings-tab-btn" type="button">Personal Memory (FR-18)</button>
+      </div>
+
+      <!-- Settings Tab 1: General Preferences -->
+      <div id="settings-tab-general" class="settings-tab-panel">
+        <div class="settings-section">
+          <div class="setting-item">
+            <div>
+              <strong>Voice Input Review</strong>
+              <p>Review speech-to-text transcript before sending</p>
+            </div>
+            <input type="checkbox" id="setting-stt-review" checked>
           </div>
-          <input type="checkbox" id="setting-stt-review" checked>
+
+          <div class="setting-item">
+            <div>
+              <strong>Auto Read-Aloud (TTS)</strong>
+              <p>Automatically synthesize audio for assistant responses</p>
+            </div>
+            <input type="checkbox" id="setting-auto-tts">
+          </div>
+
+          <div class="setting-item">
+            <div>
+              <strong>Speech Voice Speed</strong>
+              <p>Adjust reading rate for Text-to-Speech audio</p>
+            </div>
+            <input type="range" id="setting-tts-rate" min="0.7" max="1.3" step="0.1" value="1.0">
+          </div>
+
+          <div class="setting-item">
+            <div>
+              <strong>Strict Airgap Zero-Internet Policy</strong>
+              <p>100% ground truth from approved RBI, SEBI, IRDAI & IDFC directives</p>
+            </div>
+            <span class="badge-active" style="padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Active</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab 2: Personal Memory (FR-18) -->
+      <div id="settings-tab-memory" class="settings-tab-panel hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <strong>Stored User Context & Preferences</strong>
+            <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">Under explicit user control. You can review and delete any stored context.</p>
+          </div>
+          <button id="btn-clear-all-memories" class="btn btn-sm btn-danger-chatgpt" type="button">Clear All</button>
         </div>
 
-        <div class="setting-item">
-          <div>
-            <strong>Auto Read-Aloud (TTS)</strong>
-            <p>Automatically synthesize audio for assistant responses</p>
-          </div>
-          <input type="checkbox" id="setting-auto-tts">
+        <div id="user-memory-list" class="user-memory-list" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Loaded dynamically via JS -->
+          <div class="list-skeleton">Loading personal memories...</div>
         </div>
+      </div>
 
-        <div class="setting-item">
-          <div>
-            <strong>Speech Voice Speed</strong>
-            <p>Adjust reading rate for Text-to-Speech audio</p>
-          </div>
-          <input type="range" id="setting-tts-rate" min="0.7" max="1.3" step="0.1" value="1.0">
+    </div>
+  </div>
+
+  <!-- SHARE CONVERSATION MODAL (FR-24) -->
+  <div id="share-chat-modal" class="modal-overlay hidden">
+    <div class="modal-card chatgpt-modal auth-dialog" style="max-width: 480px;">
+      <button class="modal-close-btn" data-close="share-chat-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      
+      <div class="modal-header">
+        <div class="chatgpt-logo-modal" style="background: rgba(14, 165, 233, 0.15); color: #0284c7;">
+          <i class="fa-solid fa-share-nodes" style="font-size: 20px;"></i>
         </div>
+        <h3 id="share-modal-title">Share Public Link to Chat</h3>
+        <p class="modal-subtitle">Generate a read-only snapshot for compliance review, auditing, or team collaboration.</p>
+      </div>
 
-        <div class="setting-item">
-          <div>
-            <strong>Strict Airgap Zero-Internet Policy</strong>
-            <p>100% ground truth from approved RBI, SEBI, IRDAI & IDFC directives</p>
-          </div>
-          <span class="badge-active" style="padding: 3px 8px; border-radius: 9999px; font-size: 11px;">Active</span>
+      <div style="margin-top: 14px;">
+        <label style="font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; display: block;">Read-Only Shareable Link</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="share-link-input" readonly style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-tertiary); font-size: 13px;">
+          <button id="btn-copy-share-link" class="btn btn-chatgpt-primary" style="white-space: nowrap;">
+            <i class="fa-solid fa-copy"></i> Copy Link
+          </button>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary); display: flex; justify-content: space-between;">
+          <span id="share-expires-badge"><i class="fa-regular fa-clock"></i> Valid for 72 hours</span>
+          <span><i class="fa-solid fa-shield-halved"></i> Read-only snapshot</span>
         </div>
       </div>
     </div>
